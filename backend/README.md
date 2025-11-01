@@ -520,7 +520,7 @@ ISC
 - Prisma team
 - OpenAI
 - All contributors
-
+-ai
 ---
 
 ## 📞 Support
