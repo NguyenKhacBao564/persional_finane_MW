@@ -9,6 +9,7 @@ import AuthLayout from '@/components/auth/AuthLayout';
 import AuthLogin from '@/pages/AuthLogin';
 import AuthRegister from '@/pages/AuthRegister';
 import Dashboard from '@/pages/Dashboard';
+import Transactions from '@/pages/Transactions';
 
 const routes: RouteObject[] = [
   {
@@ -21,6 +22,10 @@ const routes: RouteObject[] = [
       {
         path: '/dashboard',
         element: <Dashboard />,
+      },
+      {
+        path: '/transactions',
+        element: <Transactions />,
       },
       {
         element: <AuthLayout />,
