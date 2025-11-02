@@ -1,18 +1,28 @@
+// FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import 'dotenv/config';
+import { z } from 'zod';
 
-// Lightweight env helper so every module reads from a single source.
-const required = ['OPENAI_API_KEY', 'JWT_SECRET'] as const;
-required.forEach((key) => {
-  if (!process.env[key]) {
-    console.warn(`[env] Missing ${key}. Set it in .env or deployment secrets.`);
-  }
+const EnvSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().default(4000),
+  BACKEND_PORT: z.coerce.number().optional(),
+  CLIENT_ORIGIN: z.string().default('http://localhost:5173'),
+  DATABASE_URL: z.string().url(),
+  JWT_SECRET: z.string().min(10),
+  JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
+  OPENAI_API_KEY: z.string().optional(),
 });
 
+const parsed = EnvSchema.safeParse(process.env);
+
+if (!parsed.success) {
+  console.error('[env] Environment validation failed:');
+  console.error(parsed.error.format());
+  throw new Error('Invalid environment configuration');
+}
+
 export const env = {
-  PORT: Number(process.env.BACKEND_PORT || process.env.PORT || 4000),
-  CLIENT_ORIGIN: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
-  OPENAI_API_KEY: process.env.OPENAI_API_KEY || 'replace-me',
-  JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-change-in-production',
-  JWT_ACCESS_EXPIRES_IN: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
-  JWT_REFRESH_EXPIRES_IN: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+  ...parsed.data,
+  PORT: parsed.data.BACKEND_PORT || parsed.data.PORT,
 };

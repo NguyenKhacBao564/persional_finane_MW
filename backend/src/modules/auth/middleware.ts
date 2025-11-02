@@ -1,3 +1,4 @@
+// FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import type { Request, Response, NextFunction } from 'express';
 import { verifyToken } from './service';
 import { prisma } from '../../config/prisma';
@@ -10,6 +11,8 @@ declare global {
         id: string;
         email: string;
         name: string | null;
+        role: string;
+        status: string;
       };
     }
   }
@@ -31,7 +34,9 @@ export async function authGuard(
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       res.status(401).json({
         success: false,
-        error: 'Authorization token required',
+        error: {
+          message: 'Authorization token required',
+        },
       });
       return;
     }
@@ -45,7 +50,9 @@ export async function authGuard(
     if (decoded.type !== 'access') {
       res.status(401).json({
         success: false,
-        error: 'Invalid token type',
+        error: {
+          message: 'Invalid token type',
+        },
       });
       return;
     }
@@ -57,13 +64,17 @@ export async function authGuard(
         id: true,
         email: true,
         name: true,
+        role: true,
+        status: true,
       },
     });
 
     if (!user) {
       res.status(401).json({
         success: false,
-        error: 'User not found',
+        error: {
+          message: 'User not found',
+        },
       });
       return;
     }
@@ -77,12 +88,16 @@ export async function authGuard(
     if (error instanceof Error) {
       res.status(401).json({
         success: false,
-        error: error.message,
+        error: {
+          message: error.message,
+        },
       });
     } else {
       res.status(500).json({
         success: false,
-        error: 'Authentication failed',
+        error: {
+          message: 'Authentication failed',
+        },
       });
     }
   }
@@ -116,6 +131,8 @@ export async function optionalAuth(
           id: true,
           email: true,
           name: true,
+          role: true,
+          status: true,
         },
       });
 

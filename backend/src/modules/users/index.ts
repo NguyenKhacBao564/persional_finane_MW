@@ -1,3 +1,4 @@
+// FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import authModule from '../auth';

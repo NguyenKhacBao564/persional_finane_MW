@@ -1,3 +1,4 @@
+// FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../config/prisma';
@@ -70,7 +71,8 @@ export async function register(input: RegisterInput) {
       id: true,
       email: true,
       name: true,
-      createdAt: true,
+      role: true,
+      status: true,
     },
   });
 
@@ -110,7 +112,8 @@ export async function login(input: LoginInput) {
       id: user.id,
       email: user.email,
       name: user.name,
-      createdAt: user.createdAt,
+      role: user.role,
+      status: user.status,
     },
     accessToken,
     refreshToken,

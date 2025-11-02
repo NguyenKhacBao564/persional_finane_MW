@@ -7,11 +7,23 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Status {
+  ACTIVE
+  SUSPENDED
+}
+
 model User {
   id           String        @id @default(uuid())
   email        String        @unique
   passwordHash String
   name         String?
+  role         Role          @default(USER)
+  status       Status        @default(ACTIVE)
   transactions Transaction[]
   budgets      Budget[]
   goals        Goal[]
