@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Sparkles } from 'lucide-react';
 import { fetchTransactions } from '@/api/transactions';
 import type { TxFilters, TxListResponse, Transaction } from '@/types/transactions';
 import { Card } from '@/ui/card';
@@ -14,6 +14,7 @@ import { PaginationBar } from '@/components/transactions/PaginationBar';
 import { TransactionSkeleton } from '@/components/transactions/TransactionSkeleton';
 import { EmptyState } from '@/components/transactions/EmptyState';
 import { CreateTransactionDialog } from '@/components/transactions/CreateTransactionDialog';
+import { BulkCategorizeDrawer } from '@/features/category-suggest/BulkCategorizeDrawer';
 
 function parseFiltersFromUrl(params: URLSearchParams): TxFilters {
   const filters: TxFilters = {
@@ -67,6 +68,8 @@ function serializeFiltersToUrl(filters: TxFilters): Record<string, string> {
 
 export default function Transactions() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [selection, setSelection] = useState<string[]>([]);
+  const [bulkDrawerOpen, setBulkDrawerOpen] = useState(false);
 
   const filters = useMemo(
     () => parseFiltersFromUrl(searchParams),
@@ -105,8 +108,35 @@ export default function Transactions() {
             View and manage your financial transactions
           </p>
         </div>
-        <CreateTransactionDialog />
+        <div className="flex items-center gap-2">
+          <CreateTransactionDialog />
+        </div>
       </div>
+
+      {/* Bulk Action Toolbar */}
+      {selection.length > 0 && (
+        <div className="mb-4 p-4 rounded-lg border bg-muted/50 flex items-center justify-between">
+          <span className="text-sm font-medium">
+            {selection.length} transaction{selection.length > 1 ? 's' : ''} selected
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelection([])}
+            >
+              Clear Selection
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setBulkDrawerOpen(true)}
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              Suggest & Apply
+            </Button>
+          </div>
+        </div>
+      )}
 
       <TransactionFilterBar
         value={filters}
@@ -153,7 +183,11 @@ export default function Transactions() {
               <>
                 {/* Desktop Table View */}
                 <div className="hidden md:block" id="transactions-table">
-                  <TransactionTable transactions={data.items} />
+                  <TransactionTable
+                    transactions={data.items}
+                    selection={selection}
+                    onSelectionChange={setSelection}
+                  />
                 </div>
 
                 {/* Mobile Card View */}
@@ -178,6 +212,19 @@ export default function Transactions() {
           </>
         )}
       </Card>
+
+      {/* Bulk Categorize Drawer */}
+      {data && (
+        <BulkCategorizeDrawer
+          open={bulkDrawerOpen}
+          onOpenChange={(open) => {
+            setBulkDrawerOpen(open);
+            if (!open) setSelection([]);
+          }}
+          selection={selection}
+          transactions={data.items}
+        />
+      )}
     </div>
   );
 }

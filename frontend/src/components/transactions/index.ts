@@ -1,4 +1,5 @@
 export { AmountInput } from './AmountInput';
+export { CategorySuggestChips } from './CategorySuggestChips';
 export { CreateTransactionDialog } from './CreateTransactionDialog';
 export { EditTransactionDialog } from './EditTransactionDialog';
 export { EmptyState } from './EmptyState';
