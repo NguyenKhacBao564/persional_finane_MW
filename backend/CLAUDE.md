@@ -169,9 +169,9 @@ The router contains all HTTP handlers for that domain.
 
 ### Phase 2: Core Financial Data
 - [x] **Task 18:** Create Category (income/expense/transfer) & Transaction schemas
-- [ ] **Task 19:** CRUD APIs for /categories and /transactions
-- [ ] **Task 20:** API to filter transactions by time range, category, and keywords
-- [ ] **Task 24:** API for CSV upload + server-side parsing (using Multer + PapaParse)
+- [x] **Task 19:** CRUD APIs for /categories and /transactions
+- [x] **Task 20:** API to filter transactions by time range, category, and keywords
+- [x] **Task 24:** API for CSV upload + server-side parsing (using Multer + PapaParse)
 
 ### Phase 3: Budgets & Goals
 - [x] **Task 29:** Create Budget & Goal schemas in Prisma
