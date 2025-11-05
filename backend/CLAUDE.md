@@ -175,8 +175,8 @@ The router contains all HTTP handlers for that domain.
 
 ### Phase 3: Budgets & Goals
 - [x] **Task 29:** Create Budget & Goal schemas in Prisma
-- [ ] **Task 30:** CRUD APIs for /budgets and /goals
-- [ ] **Task 31:** API to calculate total spending by category/month
+- [x] **Task 30:** CRUD APIs for /budgets and /goals
+- [x] **Task 31:** API to calculate total spending by category/month
 
 ### Phase 4: Analytics & Reporting
 - [ ] **Task 36:** API to aggregate statistical data (total income/expense, top categories)
