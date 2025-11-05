@@ -9,8 +9,11 @@ export interface BudgetItem {
   categoryId: string;
   categoryName: string;
   period: BudgetPeriod;
-  allocated: number;
-  spent: number;
+  allocated: number;   // planned amount
+  spent: number;       // actual to date
+  start: string;       // YYYY-MM-DD
+  end: string;         // YYYY-MM-DD
+  notes?: string | null;
 }
 
 export interface BudgetSummary {
@@ -26,6 +29,39 @@ export interface BudgetQueryParams {
   period: string;
   start: string;
   end: string;
+}
+
+export interface BudgetCreateInput {
+  categoryId: string;
+  period: BudgetPeriod;
+  allocated: number;
+  start: string;       // YYYY-MM-DD
+  end: string;         // YYYY-MM-DD
+  notes?: string | null;
+}
+
+export interface BudgetUpdateInput extends BudgetCreateInput {
+  budgetId: string;
+}
+
+export interface SavingGoal {
+  goalId: string;
+  name: string;
+  targetAmount: number;
+  targetDate: string;   // YYYY-MM-DD
+  currentSaved: number; // server computed or derived
+  notes?: string | null;
+}
+
+export interface GoalCreateInput {
+  name: string;
+  targetAmount: number;
+  targetDate: string;   // YYYY-MM-DD
+  notes?: string | null;
+}
+
+export interface GoalUpdateInput extends GoalCreateInput {
+  goalId: string;
 }
 
 /**

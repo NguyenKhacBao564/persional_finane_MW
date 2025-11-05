@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, Wallet } from 'lucide-react';
+import { AlertCircle, Wallet, Plus, Target } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/ui/card';
 import { Button } from '@/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/ui/alert';
 import { Skeleton } from '@/ui/skeleton';
 import { BudgetCard } from '@/components/budgets/BudgetCard';
 import { BudgetProgress } from '@/components/budgets/BudgetProgress';
+import { BudgetFormDialog } from '@/components/budgets/BudgetFormDialog';
+import { GoalFormDialog } from '@/components/goals/GoalFormDialog';
 import { fetchBudgetSummary } from '@/api/budgets';
-import { fetchBudgetSummaryLocal } from './localProvider';
 import { formatCurrency } from '@/lib/formatters';
 import type { BudgetQueryParams } from '@/types/budgets';
 
@@ -42,6 +44,8 @@ function getCurrentMonthRange(): BudgetQueryParams {
  */
 export function BudgetOverview() {
   const params = getCurrentMonthRange();
+  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+  const [goalDialogOpen, setGoalDialogOpen] = useState(false);
 
   const {
     data,
@@ -51,7 +55,7 @@ export function BudgetOverview() {
     refetch,
   } = useQuery({
     queryKey: ['budgets', 'summary', params],
-    queryFn: () => (USE_LOCAL ? fetchBudgetSummaryLocal(params) : fetchBudgetSummary(params)),
+    queryFn: () => fetchBudgetSummary(params),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -154,13 +158,31 @@ export function BudgetOverview() {
       {/* Summary header */}
       <Card className="rounded-xl shadow-sm">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wallet className="h-5 w-5" aria-hidden="true" />
-            Budget Overview
-          </CardTitle>
-          <CardDescription>
-            Monthly spending across all categories
-          </CardDescription>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Wallet className="h-5 w-5" aria-hidden="true" />
+                Budget Overview
+              </CardTitle>
+              <CardDescription>
+                Monthly spending across all categories
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setGoalDialogOpen(true)}
+              >
+                <Target className="mr-2 h-4 w-4" />
+                New Goal
+              </Button>
+              <Button size="sm" onClick={() => setBudgetDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                New Budget
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Total amounts */}
@@ -197,12 +219,15 @@ export function BudgetOverview() {
         ))}
       </div>
 
-      {/* Local provider indicator */}
-      {USE_LOCAL && (
-        <div className="text-xs text-muted-foreground text-center">
-          Using local mock data (VITE_BUDGETS_LOCAL=true)
-        </div>
-      )}
+      {/* Dialogs */}
+      <BudgetFormDialog
+        open={budgetDialogOpen}
+        onOpenChange={setBudgetDialogOpen}
+        defaultPeriod="MONTHLY"
+        defaultDates={params}
+      />
+
+      <GoalFormDialog open={goalDialogOpen} onOpenChange={setGoalDialogOpen} />
     </div>
   );
 }

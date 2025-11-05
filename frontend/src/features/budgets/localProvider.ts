@@ -43,6 +43,9 @@ export async function fetchBudgetSummaryLocal(
       period,
       allocated,
       spent,
+      start: _params.start,
+      end: _params.end,
+      notes: null,
     };
   });
 
