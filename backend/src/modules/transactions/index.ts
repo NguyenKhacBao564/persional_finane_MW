@@ -1,237 +1,361 @@
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { authGuard } from '../auth/middleware.js';
+import { PrismaClient, Prisma } from '@prisma/client';
+import { authGuard } from '../auth/middleware';
+import { asyncHandler, AppError } from '../../middleware/errorHandler';
+import {
+  createTransactionSchema,
+  updateTransactionSchema,
+  transactionFiltersSchema,
+  type TransactionFilters,
+} from './validation';
 import multer from 'multer';
 import Papa from 'papaparse';
+import logger from '../../lib/logger';
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// Configure multer for CSV upload
-const upload = multer({ storage: multer.memoryStorage() });
+// Configure multer for CSV upload with size limit
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+  },
+});
 
-// GET /api/transactions - Get all transactions with filtering (Task 20)
-router.get('/', authGuard, async (req: Request, res: Response) => {
-  try {
+/**
+ * GET /api/transactions - Get all transactions with filtering and pagination
+ * Query params: q, type, categoryId, accountId, minAmount, maxAmount, startDate, endDate, sort, page, limit
+ */
+router.get(
+  '/',
+  authGuard,
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const {
-      categoryId,
-      startDate,
-      endDate,
-      keyword,
-      page = '1',
-      limit = '50'
-    } = req.query;
 
-    // Build where clause for filtering
-    const where: any = { userId };
+    // Validate and parse query params with Zod
+    const filters = transactionFiltersSchema.parse(req.query);
 
-    // Filter by category
-    if (categoryId) {
-      where.categoryId = categoryId as string;
-    }
+    // Build where clause
+    const where: Prisma.TransactionWhereInput = {
+      userId,
+    };
 
-    // Filter by date range
-    if (startDate || endDate) {
-      where.occurredAt = {};
-      if (startDate) {
-        where.occurredAt.gte = new Date(startDate as string);
-      }
-      if (endDate) {
-        where.occurredAt.lte = new Date(endDate as string);
-      }
-    }
-
-    // Filter by keyword (search in description)
-    if (keyword) {
+    // Search query in description
+    if (filters.q) {
       where.description = {
-        contains: keyword as string,
-        mode: 'insensitive'
+        contains: filters.q,
+        mode: 'insensitive',
       };
     }
 
-    // Pagination
-    const pageNum = parseInt(page as string);
-    const limitNum = parseInt(limit as string);
-    const skip = (pageNum - 1) * limitNum;
+    // Filter by transaction type
+    if (filters.type) {
+      where.type = filters.type;
+    }
 
+    // Filter by category
+    if (filters.categoryId) {
+      where.categoryId = filters.categoryId;
+    }
+
+    // Filter by account (if accountId field exists)
+    if (filters.accountId) {
+      // Note: Current schema doesn't have accountId on Transaction
+      // This is a placeholder for when it's added
+      // where.accountId = filters.accountId;
+    }
+
+    // Filter by amount range
+    if (filters.minAmount !== undefined || filters.maxAmount !== undefined) {
+      where.amount = {};
+      if (filters.minAmount !== undefined) {
+        where.amount.gte = filters.minAmount;
+      }
+      if (filters.maxAmount !== undefined) {
+        where.amount.lte = filters.maxAmount;
+      }
+    }
+
+    // Filter by date range
+    if (filters.startDate || filters.endDate) {
+      where.occurredAt = {};
+      if (filters.startDate) {
+        where.occurredAt.gte = filters.startDate;
+      }
+      if (filters.endDate) {
+        where.occurredAt.lte = filters.endDate;
+      }
+    }
+
+    // Parse sort parameter (format: "field:order")
+    const [sortField, sortOrder] = filters.sort.split(':');
+    const orderBy: Prisma.TransactionOrderByWithRelationInput = {
+      [sortField || 'occurredAt']: sortOrder === 'asc' ? 'asc' : 'desc',
+    };
+
+    // Pagination
+    const skip = (filters.page - 1) * filters.limit;
+
+    // Execute query
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
         include: {
-          category: true
+          category: {
+            select: {
+              id: true,
+              name: true,
+              type: true,
+            },
+          },
         },
-        orderBy: { occurredAt: 'desc' },
+        orderBy,
         skip,
-        take: limitNum
+        take: filters.limit,
       }),
-      prisma.transaction.count({ where })
+      prisma.transaction.count({ where }),
     ]);
 
+    // Return unified envelope
     res.json({
-      transactions,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
+      success: true,
+      data: {
+        items: transactions,
         total,
-        totalPages: Math.ceil(total / limitNum)
-      }
+        page: filters.page,
+        limit: filters.limit,
+        totalPages: Math.ceil(total / filters.limit),
+      },
     });
-  } catch (error) {
-    console.error('Error fetching transactions:', error);
-    res.status(500).json({ error: 'Failed to fetch transactions' });
-  }
-});
+  })
+);
 
-// GET /api/transactions/:id - Get transaction by ID
-router.get('/:id', authGuard, async (req: Request, res: Response) => {
-  try {
+/**
+ * GET /api/transactions/recent - Get recent transactions (E3-S2)
+ * Query params: limit (default: 10)
+ */
+router.get(
+  '/recent',
+  authGuard,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 100);
+
+    const transactions = await prisma.transaction.findMany({
+      where: { userId },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+      },
+      orderBy: { occurredAt: 'desc' },
+      take: limit,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        items: transactions,
+      },
+    });
+  })
+);
+
+/**
+ * GET /api/transactions/:id - Get transaction by ID
+ */
+router.get(
+  '/:id',
+  authGuard,
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = req.user!.id;
 
     const transaction = await prisma.transaction.findFirst({
       where: { id, userId },
       include: {
-        category: true,
-        aiInsights: true
-      }
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+        aiInsights: true,
+      },
     });
 
     if (!transaction) {
-      return res.status(404).json({ error: 'Transaction not found' });
+      throw new AppError('Transaction not found', 404, 'NOT_FOUND');
     }
 
-    res.json({ transaction });
-  } catch (error) {
-    console.error('Error fetching transaction:', error);
-    res.status(500).json({ error: 'Failed to fetch transaction' });
-  }
-});
+    res.json({
+      success: true,
+      data: transaction,
+    });
+  })
+);
 
-// POST /api/transactions - Create new transaction
-router.post('/', authGuard, async (req: Request, res: Response) => {
-  try {
+/**
+ * POST /api/transactions - Create new transaction
+ */
+router.post(
+  '/',
+  authGuard,
+  asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const { amount, categoryId, description, occurredAt, currency } = req.body;
 
-    if (!amount || !occurredAt) {
-      return res.status(400).json({ error: 'Amount and occurredAt are required' });
-    }
+    // Validate with Zod
+    const input = createTransactionSchema.parse(req.body);
 
     const transaction = await prisma.transaction.create({
       data: {
         userId,
-        amount: parseFloat(amount),
-        categoryId: categoryId || null,
-        description: description || null,
-        occurredAt: new Date(occurredAt),
-        currency: currency || 'USD'
+        type: input.type,
+        amount: input.amount,
+        categoryId: input.categoryId || null,
+        description: input.description,
+        occurredAt: input.occurredAt,
+        currency: input.currency,
       },
       include: {
-        category: true
-      }
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+      },
     });
 
-    res.status(201).json({ transaction });
-  } catch (error) {
-    console.error('Error creating transaction:', error);
-    res.status(500).json({ error: 'Failed to create transaction' });
-  }
-});
+    res.status(201).json({
+      success: true,
+      data: transaction,
+    });
+  })
+);
 
-// PUT /api/transactions/:id - Update transaction
-router.put('/:id', authGuard, async (req: Request, res: Response) => {
-  try {
+/**
+ * PATCH /api/transactions/:id - Update transaction
+ */
+router.patch(
+  '/:id',
+  authGuard,
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = req.user!.id;
-    const { amount, categoryId, description, occurredAt, currency } = req.body;
 
-    // Check if transaction exists and belongs to user
-    const existingTransaction = await prisma.transaction.findFirst({
-      where: { id, userId }
+    // Check ownership
+    const existing = await prisma.transaction.findFirst({
+      where: { id, userId },
     });
 
-    if (!existingTransaction) {
-      return res.status(404).json({ error: 'Transaction not found' });
+    if (!existing) {
+      throw new AppError('Transaction not found', 404, 'NOT_FOUND');
     }
 
-    const updateData: any = {};
-    if (amount !== undefined) updateData.amount = parseFloat(amount);
-    if (categoryId !== undefined) updateData.categoryId = categoryId || null;
-    if (description !== undefined) updateData.description = description || null;
-    if (occurredAt !== undefined) updateData.occurredAt = new Date(occurredAt);
-    if (currency !== undefined) updateData.currency = currency;
+    // Validate with Zod
+    const input = updateTransactionSchema.parse(req.body);
+
+    // Build update data (use plain object to avoid relation typing issues)
+    const updateData: Record<string, unknown> = {};
+    if (input.type !== undefined) updateData.type = input.type;
+    if (input.amount !== undefined) updateData.amount = input.amount;
+    if (input.categoryId !== undefined) updateData.categoryId = input.categoryId;
+    if (input.description !== undefined) updateData.description = input.description;
+    if (input.occurredAt !== undefined) updateData.occurredAt = input.occurredAt;
+    if (input.currency !== undefined) updateData.currency = input.currency;
 
     const transaction = await prisma.transaction.update({
       where: { id },
       data: updateData,
       include: {
-        category: true
-      }
+        category: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+          },
+        },
+      },
     });
 
-    res.json({ transaction });
-  } catch (error) {
-    console.error('Error updating transaction:', error);
-    res.status(500).json({ error: 'Failed to update transaction' });
-  }
-});
+    res.json({
+      success: true,
+      data: transaction,
+    });
+  })
+);
 
-// DELETE /api/transactions/:id - Delete transaction
-router.delete('/:id', authGuard, async (req: Request, res: Response) => {
-  try {
+/**
+ * DELETE /api/transactions/:id - Delete transaction
+ */
+router.delete(
+  '/:id',
+  authGuard,
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
     const userId = req.user!.id;
 
-    // Check if transaction exists and belongs to user
-    const existingTransaction = await prisma.transaction.findFirst({
-      where: { id, userId }
+    // Check ownership
+    const existing = await prisma.transaction.findFirst({
+      where: { id, userId },
     });
 
-    if (!existingTransaction) {
-      return res.status(404).json({ error: 'Transaction not found' });
+    if (!existing) {
+      throw new AppError('Transaction not found', 404, 'NOT_FOUND');
     }
 
     await prisma.transaction.delete({
-      where: { id }
+      where: { id },
     });
 
-    res.json({ message: 'Transaction deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting transaction:', error);
-    res.status(500).json({ error: 'Failed to delete transaction' });
-  }
-});
+    res.json({
+      success: true,
+      data: {
+        message: 'Transaction deleted successfully',
+      },
+    });
+  })
+);
 
-// POST /api/transactions/upload-csv - Upload CSV file and parse transactions (Task 24)
-router.post('/upload-csv', authGuard, upload.single('file'), async (req: Request, res: Response) => {
-  try {
+/**
+ * POST /api/transactions/upload-csv - Upload and parse CSV file
+ */
+router.post(
+  '/upload-csv',
+  authGuard,
+  upload.single('file'),
+  asyncHandler(async (req: Request, res: Response) => {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      throw new AppError('No file uploaded', 400, 'NO_FILE');
     }
 
     const userId = req.user!.id;
     const csvContent = req.file.buffer.toString('utf-8');
 
-    // Parse CSV using PapaParse
+    // Parse CSV
     const parsed = Papa.parse(csvContent, {
       header: true,
       skipEmptyLines: true,
-      transformHeader: (header) => header.trim().toLowerCase()
+      transformHeader: (header) => header.trim().toLowerCase(),
     });
 
     if (parsed.errors.length > 0) {
-      return res.status(400).json({
-        error: 'CSV parsing failed',
-        details: parsed.errors
-      });
+      throw new AppError('CSV parsing failed', 400, 'CSV_PARSE_ERROR');
     }
 
-    const rows = parsed.data as any[];
+    const rows = parsed.data as Record<string, string>[];
     const results = {
       success: 0,
       failed: 0,
-      errors: [] as any[]
+      errors: [] as { row: number; error: string }[],
     };
 
     // Process each row
@@ -239,12 +363,12 @@ router.post('/upload-csv', authGuard, upload.single('file'), async (req: Request
       const row = rows[i];
 
       try {
-        // Required fields: amount, date
+        // Validate required fields
         if (!row.amount || !row.date) {
           results.failed++;
           results.errors.push({
-            row: i + 2, // +2 because of header and 0-index
-            error: 'Missing required fields: amount or date'
+            row: i + 2,
+            error: 'Missing required fields: amount or date',
           });
           continue;
         }
@@ -255,21 +379,35 @@ router.post('/upload-csv', authGuard, upload.single('file'), async (req: Request
           results.failed++;
           results.errors.push({
             row: i + 2,
-            error: 'Invalid date format'
+            error: 'Invalid date format',
           });
           continue;
         }
 
+        // Parse amount (handle thousands separators)
+        const amount = parseFloat(row.amount.replace(/,/g, ''));
+        if (isNaN(amount) || amount <= 0) {
+          results.failed++;
+          results.errors.push({
+            row: i + 2,
+            error: 'Invalid amount',
+          });
+          continue;
+        }
+
+        // Determine transaction type
+        const type = row.type?.toUpperCase() === 'IN' ? 'IN' : 'OUT';
+
         // Find category by name if provided
-        let categoryId = null;
+        let categoryId: string | null = null;
         if (row.category) {
           const category = await prisma.category.findFirst({
             where: {
               name: {
                 equals: row.category.trim(),
-                mode: 'insensitive'
-              }
-            }
+                mode: 'insensitive',
+              },
+            },
           });
           categoryId = category?.id || null;
         }
@@ -278,32 +416,34 @@ router.post('/upload-csv', authGuard, upload.single('file'), async (req: Request
         await prisma.transaction.create({
           data: {
             userId,
-            amount: parseFloat(row.amount),
+            type,
+            amount,
             categoryId,
             description: row.description || null,
             occurredAt,
-            currency: row.currency || 'USD'
-          }
+            currency: row.currency || 'USD',
+          },
         });
 
         results.success++;
-      } catch (error: any) {
+      } catch (error) {
+        logger.error({ error, row: i + 2 }, 'CSV row processing error');
         results.failed++;
         results.errors.push({
           row: i + 2,
-          error: error.message
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
 
     res.json({
-      message: 'CSV processing completed',
-      results
+      success: true,
+      data: {
+        message: 'CSV processing completed',
+        results,
+      },
     });
-  } catch (error) {
-    console.error('Error processing CSV:', error);
-    res.status(500).json({ error: 'Failed to process CSV file' });
-  }
-});
+  })
+);
 
 export default { router };

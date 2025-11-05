@@ -1,6 +1,5 @@
 import {
   Navigate,
-  Outlet,
   RouteObject,
   RouterProvider,
   createBrowserRouter,
@@ -10,23 +9,43 @@ import AuthLogin from '@/pages/AuthLogin';
 import AuthRegister from '@/pages/AuthRegister';
 import Dashboard from '@/pages/Dashboard';
 import Transactions from '@/pages/Transactions';
+import NotFound from '@/pages/NotFound';
+import { ProtectedRoute } from './ProtectedRoute';
+import { hasTokens } from '@/lib/tokens';
+
+/**
+ * Root redirect logic:
+ * - If authenticated → /transactions
+ * - If not authenticated → /login
+ */
+function RootRedirect() {
+  const isAuthenticated = hasTokens();
+  return <Navigate to={isAuthenticated ? '/transactions' : '/login'} replace />;
+}
 
 const routes: RouteObject[] = [
   {
-    element: <Outlet />,
+    path: '/',
     children: [
       {
         index: true,
-        element: <Navigate to="/login" replace />,
+        element: <RootRedirect />,
       },
+      // Protected routes (require authentication)
       {
-        path: '/dashboard',
-        element: <Dashboard />,
+        element: <ProtectedRoute />,
+        children: [
+          {
+            path: '/dashboard',
+            element: <Dashboard />,
+          },
+          {
+            path: '/transactions',
+            element: <Transactions />,
+          },
+        ],
       },
-      {
-        path: '/transactions',
-        element: <Transactions />,
-      },
+      // Public routes (auth pages)
       {
         element: <AuthLayout />,
         children: [
@@ -40,9 +59,10 @@ const routes: RouteObject[] = [
           },
         ],
       },
+      // 404 fallback
       {
         path: '*',
-        element: <Navigate to="/login" replace />,
+        element: <NotFound />,
       },
     ],
   },

@@ -34,7 +34,7 @@ function LoginForm() {
       const result = await mutateAsync(values);
       setTokens(result.tokens);
       toast.success('Logged in successfully');
-      navigate('/dashboard');
+      navigate('/transactions');
     } catch (error) {
       const message = extractErrorMessage(error);
       setFormError(message);

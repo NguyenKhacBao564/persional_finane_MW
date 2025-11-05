@@ -7,6 +7,9 @@ import categoriesModule from '../modules/categories';
 import budgetsModule from '../modules/budgets';
 import goalsModule from '../modules/goals';
 import aiModule from '../modules/ai';
+import suggestionsModule from '../modules/suggestions';
+import insightsModule from '../modules/insights';
+import importsModule from '../modules/imports';
 
 // Aggregates module routers. Each module exposes its own router + handlers.
 const router = Router();
@@ -18,5 +21,8 @@ router.use('/categories', categoriesModule.router);
 router.use('/budgets', budgetsModule.router);
 router.use('/goals', goalsModule.router);
 router.use('/ai', aiModule.router);
+router.use('/suggestions', suggestionsModule.router);
+router.use('/insights', insightsModule.router);
+router.use('/imports', importsModule.router);
 
 export default router;

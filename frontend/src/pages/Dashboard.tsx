@@ -1,11 +1,19 @@
+import { BudgetOverview } from '@/features/budgets/BudgetOverview';
+
 function Dashboard() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md text-center">
-        <h1 className="text-2xl font-semibold">You are logged in</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          This is a placeholder dashboard. Connect the real backend to load data.
-        </p>
+    <main className="min-h-screen bg-background">
+      <div className="container max-w-7xl mx-auto px-4 py-6">
+        {/* Page header */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Overview of your financial health and spending
+          </p>
+        </div>
+
+        {/* Budget overview section */}
+        <BudgetOverview />
       </div>
     </main>
   );
