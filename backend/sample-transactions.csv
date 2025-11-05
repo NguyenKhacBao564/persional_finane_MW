@@ -1,0 +1,6 @@
+amount,date,category,description,currency
+150.00,2025-01-15,Salary,Monthly salary,USD
+-45.50,2025-01-16,Groceries,Supermarket shopping,USD
+-12.99,2025-01-17,Entertainment,Netflix subscription,USD
+-8.50,2025-01-18,Food,Coffee shop,USD
+-120.00,2025-01-20,Rent,Monthly rent payment,USD
