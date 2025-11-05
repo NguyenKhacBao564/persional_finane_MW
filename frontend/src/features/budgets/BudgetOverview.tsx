@@ -208,7 +208,12 @@ export function BudgetOverview() {
           </div>
 
           {/* Global progress */}
-          <BudgetProgress allocated={totals.allocated} spent={totals.spent} />
+          <BudgetProgress 
+            allocated={totals.allocated} 
+            spent={totals.spent} 
+            start={params.start} 
+            end={params.end} 
+          />
         </CardContent>
       </Card>
 

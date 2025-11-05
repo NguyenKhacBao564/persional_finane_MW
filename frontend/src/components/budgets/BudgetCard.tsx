@@ -1,15 +1,7 @@
-import { AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/ui/card';
-import { Badge } from '@/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/ui/tooltip';
 import { BudgetProgress } from './BudgetProgress';
+import { BudgetStatusPill } from './BudgetStatusPill';
 import { formatCurrency } from '@/lib/formatters';
-import { getBudgetStatus } from '@/types/budgets';
 import { cn } from '@/lib/utils';
 import type { BudgetItem } from '@/types/budgets';
 
@@ -32,22 +24,8 @@ interface BudgetCardProps {
  * @param currency - Currency code (default: VND)
  */
 export function BudgetCard({ budget, currency = 'VND' }: BudgetCardProps) {
-  const { categoryName, period, allocated, spent } = budget;
+  const { categoryName, period, allocated, spent, start, end } = budget;
   const remaining = allocated - spent;
-  const status = getBudgetStatus(allocated, spent);
-
-  // Status badge styling
-  const statusBadgeClasses = {
-    ok: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-    warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-    over: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  };
-
-  const statusLabels = {
-    ok: 'On Track',
-    warning: 'Warning',
-    over: 'Over Budget',
-  };
 
   // Period label
   const periodLabel = period.charAt(0) + period.slice(1).toLowerCase();
@@ -60,36 +38,12 @@ export function BudgetCard({ budget, currency = 'VND' }: BudgetCardProps) {
             <h3 className="font-semibold text-base truncate">{categoryName}</h3>
             <p className="text-sm text-muted-foreground">{periodLabel}</p>
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div>
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      'flex items-center gap-1',
-                      statusBadgeClasses[status]
-                    )}
-                  >
-                    {status === 'over' && (
-                      <AlertTriangle className="h-3 w-3" aria-hidden="true" />
-                    )}
-                    {statusLabels[status]}
-                  </Badge>
-                </div>
-              </TooltipTrigger>
-              {status === 'warning' && (
-                <TooltipContent>
-                  <p className="text-xs">Getting close to limit</p>
-                </TooltipContent>
-              )}
-              {status === 'over' && (
-                <TooltipContent>
-                  <p className="text-xs">Exceeded budget allocation</p>
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </TooltipProvider>
+          <BudgetStatusPill 
+            allocated={allocated} 
+            spent={spent} 
+            start={start} 
+            end={end} 
+          />
         </div>
       </CardHeader>
 
@@ -118,7 +72,12 @@ export function BudgetCard({ budget, currency = 'VND' }: BudgetCardProps) {
         </div>
 
         {/* Progress bar */}
-        <BudgetProgress allocated={allocated} spent={spent} />
+        <BudgetProgress 
+          allocated={allocated} 
+          spent={spent} 
+          start={start} 
+          end={end} 
+        />
       </CardContent>
     </Card>
   );
