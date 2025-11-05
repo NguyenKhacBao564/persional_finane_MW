@@ -7,4 +7,5 @@ This directory will house the upcoming AI chatbot feature. Suggested layout:
 - `clients/` for SDK wrappers (OpenAI, Anthropic, etc.).
 - `tests/` mirroring the structure above.
 
+# AI Chatbot
 Implementation intentionally deferred. Create design docs and interface contracts here before coding to keep the feature scoped and reviewable.
