@@ -22,6 +22,7 @@ mlxtend==0.23.1
 
 # AI and LLM integrations
 openai==1.50.2
+google-generativeai==0.8.3
 transformers==4.44.2
 torch==2.3.1
 

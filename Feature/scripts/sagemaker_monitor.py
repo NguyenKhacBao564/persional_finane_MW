@@ -6,6 +6,11 @@ SageMaker Endpoint Monitor and Cleanup Utility
 import boto3
 import time
 import sys
+import os
+from dotenv import load_dotenv
+
+# Load .env from AI_Chatbot directory
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', 'AI_Chatbot', '.env'))
 
 def monitor_endpoints():
     """Monitor endpoint creation status"""
