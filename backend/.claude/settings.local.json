@@ -32,7 +32,8 @@
       "Bash(docker-compose down:*)",
       "Bash(node test-db-connection.js:*)",
       "Bash(node test-api.js:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(del test-budgets-goals.js)"
     ],
     "deny": [],
     "ask": []

@@ -446,4 +446,118 @@ router.post(
   })
 );
 
+// GET /api/transactions/analytics/spending - Calculate total spending by category/month (Task 31)
+router.get('/analytics/spending', authGuard, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+    const { startDate, endDate, groupBy = 'month' } = req.query;
+
+    // Build date filter
+    const where: any = { userId };
+    if (startDate || endDate) {
+      where.occurredAt = {};
+      if (startDate) {
+        where.occurredAt.gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        where.occurredAt.lte = new Date(endDate as string);
+      }
+    }
+
+    // Fetch all transactions within the date range
+    const transactions = await prisma.transaction.findMany({
+      where,
+      include: {
+        category: true
+      },
+      orderBy: { occurredAt: 'asc' }
+    });
+
+    // Group transactions by period and category
+    const spendingData: any = {};
+
+    transactions.forEach((transaction) => {
+      const date = new Date(transaction.occurredAt);
+      let periodKey: string;
+
+      // Determine period key based on groupBy parameter
+      if (groupBy === 'month') {
+        periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      } else if (groupBy === 'week') {
+        // Get ISO week number
+        const weekNumber = getISOWeekNumber(date);
+        periodKey = `${date.getFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
+      } else if (groupBy === 'year') {
+        periodKey = `${date.getFullYear()}`;
+      } else {
+        // Default to month
+        periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      }
+
+      // Initialize period if not exists
+      if (!spendingData[periodKey]) {
+        spendingData[periodKey] = {
+          period: periodKey,
+          totalAmount: 0,
+          categories: {},
+          transactionCount: 0
+        };
+      }
+
+      // Get category name
+      const categoryName = transaction.category?.name || 'Uncategorized';
+      const categoryType = transaction.category?.type || 'EXPENSE';
+
+      // Initialize category if not exists
+      if (!spendingData[periodKey].categories[categoryName]) {
+        spendingData[periodKey].categories[categoryName] = {
+          categoryId: transaction.categoryId,
+          categoryName,
+          categoryType,
+          totalAmount: 0,
+          transactionCount: 0
+        };
+      }
+
+      // Add to totals (convert Decimal to number)
+      const amount = parseFloat(transaction.amount.toString());
+      spendingData[periodKey].totalAmount += amount;
+      spendingData[periodKey].categories[categoryName].totalAmount += amount;
+      spendingData[periodKey].categories[categoryName].transactionCount += 1;
+      spendingData[periodKey].transactionCount += 1;
+    });
+
+    // Convert to array and sort by period
+    const result = Object.values(spendingData).map((period: any) => ({
+      ...period,
+      categories: Object.values(period.categories)
+    })).sort((a: any, b: any) => a.period.localeCompare(b.period));
+
+    res.json({
+      spending: result,
+      summary: {
+        totalPeriods: result.length,
+        totalTransactions: transactions.length,
+        totalAmount: transactions.reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0)
+      }
+    });
+  } catch (error) {
+    console.error('Error calculating spending analytics:', error);
+    res.status(500).json({ error: 'Failed to calculate spending analytics' });
+  }
+});
+
+// Helper function to get ISO week number
+function getISOWeekNumber(date: Date): number {
+  const target = new Date(date.valueOf());
+  const dayNumber = (date.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNumber + 3);
+  const firstThursday = target.valueOf();
+  target.setMonth(0, 1);
+  if (target.getDay() !== 4) {
+    target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+  }
+  return 1 + Math.ceil((firstThursday - target.valueOf()) / 604800000);
+}
+
 export default { router };
