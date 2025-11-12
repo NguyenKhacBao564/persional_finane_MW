@@ -38,7 +38,7 @@ function RegisterForm() {
       });
       setTokens(result.tokens);
       toast.success('Account created successfully');
-      navigate('/transactions');
+      navigate('/dashboard');
     } catch (error) {
       const message = extractErrorMessage(error);
       setFormError(message);

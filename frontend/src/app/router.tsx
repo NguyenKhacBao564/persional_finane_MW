@@ -9,19 +9,19 @@ import AuthLogin from '@/pages/AuthLogin';
 import AuthRegister from '@/pages/AuthRegister';
 import Dashboard from '@/pages/Dashboard';
 import Transactions from '@/pages/Transactions';
+import BudgetsOverview from '@/pages/BudgetsOverview';
+import BudgetForm from '@/pages/BudgetForm';
+import SavingGoalForm from '@/pages/SavingGoalForm';
+import ImportCsv from '@/pages/ImportCsv';
 import NotFound from '@/pages/NotFound';
 import AppErrorBoundary from '@/pages/AppErrorBoundary';
 import { ProtectedRoute } from './ProtectedRoute';
+import { AppLayout } from '@/layouts/AppLayout';
 import { hasValidTokens } from '@/lib/tokens';
 
-/**
- * Root redirect logic:
- * - If authenticated → /transactions
- * - If not authenticated → /login
- */
 function RootRedirect() {
   const isAuthenticated = hasValidTokens();
-  return <Navigate to={isAuthenticated ? '/transactions' : '/login'} replace />;
+  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
 }
 
 const routes: RouteObject[] = [
@@ -38,12 +38,41 @@ const routes: RouteObject[] = [
         element: <ProtectedRoute />,
         children: [
           {
-            path: '/dashboard',
-            element: <Dashboard />,
-          },
-          {
-            path: '/transactions',
-            element: <Transactions />,
+            element: <AppLayout />,
+            children: [
+              {
+                path: '/dashboard',
+                element: <Dashboard />,
+              },
+              {
+                path: '/transactions',
+                element: <Transactions />,
+              },
+              {
+                path: '/transactions/import',
+                element: <ImportCsv />,
+              },
+              {
+                path: '/budgets',
+                element: <BudgetsOverview />,
+              },
+              {
+                path: '/budgets/new',
+                element: <BudgetForm />,
+              },
+              {
+                path: '/budgets/:id/edit',
+                element: <BudgetForm />,
+              },
+              {
+                path: '/goals/new',
+                element: <SavingGoalForm />,
+              },
+              {
+                path: '/settings',
+                element: <div>Settings page coming soon</div>,
+              },
+            ],
           },
         ],
       },
