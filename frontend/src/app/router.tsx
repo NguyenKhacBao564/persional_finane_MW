@@ -9,7 +9,7 @@ import AuthLogin from '@/pages/AuthLogin';
 import AuthRegister from '@/pages/AuthRegister';
 import Dashboard from '@/pages/Dashboard';
 import Transactions from '@/pages/Transactions';
-import BudgetsOverview from '@/pages/BudgetsOverview';
+import BudgetsPage from '@/pages/BudgetsPage';
 import BudgetForm from '@/pages/BudgetForm';
 import SavingGoalForm from '@/pages/SavingGoalForm';
 import ImportCsv from '@/pages/ImportCsv';
@@ -54,7 +54,7 @@ const routes: RouteObject[] = [
               },
               {
                 path: '/budgets',
-                element: <BudgetsOverview />,
+                element: <BudgetsPage />,
               },
               {
                 path: '/budgets/new',

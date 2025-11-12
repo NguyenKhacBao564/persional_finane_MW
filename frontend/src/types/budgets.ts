@@ -33,15 +33,24 @@ export interface BudgetQueryParams {
 
 export interface BudgetCreateInput {
   categoryId: string;
-  period: BudgetPeriod;
-  allocated: number;
-  start: string;       // YYYY-MM-DD
-  end: string;         // YYYY-MM-DD
+  month: string;       // YYYY-MM
+  limit: number;
+  period?: BudgetPeriod;
+  allocated?: number;
+  start?: string;
+  end?: string;
   notes?: string | null;
 }
 
-export interface BudgetUpdateInput extends BudgetCreateInput {
+export interface BudgetUpdateInput {
   budgetId: string;
+  month?: string;
+  limit?: number;
+  period?: BudgetPeriod;
+  allocated?: number;
+  start?: string;
+  end?: string;
+  notes?: string | null;
 }
 
 export interface SavingGoal {

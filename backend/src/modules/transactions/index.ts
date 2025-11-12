@@ -302,15 +302,37 @@ router.post(
     // Validate with Zod
     const input = createTransactionSchema.parse(req.body);
 
+    // Validate foreign keys exist
+    const [category, account] = await Promise.all([
+      prisma.category.findUnique({ where: { id: input.categoryId } }),
+      prisma.account.findUnique({ where: { id: input.accountId } }),
+    ]);
+
+    if (!category) {
+      throw new AppError(
+        'Invalid categoryId: category not found',
+        400,
+        'FK_INVALID'
+      );
+    }
+
+    if (!account) {
+      throw new AppError(
+        'Invalid accountId: account not found',
+        400,
+        'FK_INVALID'
+      );
+    }
+
     const transaction = await prisma.transaction.create({
       data: {
         userId,
         accountId: input.accountId,
         type: input.type,
         amount: input.amount,
-        categoryId: input.categoryId || null,
+        categoryId: input.categoryId,
         note: input.note ?? null,
-        occurredAt: input.txDate, // Map txDate from input to occurredAt
+        occurredAt: input.txDate,
         currency: input.currency,
       },
       include: {

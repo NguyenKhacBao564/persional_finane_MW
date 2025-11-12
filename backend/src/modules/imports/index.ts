@@ -1,30 +1,32 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { z } from 'zod';
 import { authGuard } from '../auth/middleware';
 import { asyncHandler, AppError } from '../../middleware/errorHandler';
 import multer from 'multer';
 import Papa from 'papaparse';
 import logger from '../../lib/logger';
+import { parseAmountNumber, parseDateString } from '../../lib/parseAmountNumber';
+import {
+  previewRequestSchema,
+  commitRequestSchema,
+  type ColumnMapping,
+  type ImportOptions,
+} from './validation';
 
 const router = Router();
 const prisma = new PrismaClient();
 const DEFAULT_ACCOUNT_ID = 'acc_cash';
+const MAX_PREVIEW_ROWS = 2000;
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
-// Configure multer with size limit
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: 5 * 1024 * 1024, // 5MB
   },
 });
 
-/**
- * Temporary storage for preview data (in production, use Redis/cache)
- */
-const previewCache = new Map<string, ParsedCsvData>();
-
-interface ParsedCsvData {
+interface CachedCsvData {
   headers: string[];
   rows: string[][];
   totalRows: number;
@@ -32,18 +34,13 @@ interface ParsedCsvData {
   timestamp: number;
 }
 
-interface PreviewRow {
-  rowIndex: number;
-  data: Record<string, string>;
-  issues: string[];
-}
+const rowCache = new Map<string, CachedCsvData>();
 
 /**
- * POST /api/imports/preview - Upload CSV and preview with column detection
- * Returns: { headers, sampleRows, suggestedMapping, totalRows }
+ * POST /api/imports/upload - Upload CSV file
  */
 router.post(
-  '/preview',
+  '/upload',
   authGuard,
   upload.single('file'),
   asyncHandler(async (req: Request, res: Response) => {
@@ -51,10 +48,13 @@ router.post(
       throw new AppError('No file uploaded', 400, 'NO_FILE');
     }
 
+    if (req.file.size > 5 * 1024 * 1024) {
+      throw new AppError('File size exceeds 5MB limit', 413, 'FILE_TOO_LARGE');
+    }
+
     const userId = req.user!.id;
     const csvContent = req.file.buffer.toString('utf-8');
 
-    // Parse CSV
     const parsed = Papa.parse(csvContent, {
       header: false,
       skipEmptyLines: true,
@@ -71,250 +71,372 @@ router.post(
     const allRows = parsed.data as string[][];
 
     if (allRows.length < 2) {
-      throw new AppError('CSV file must have at least 2 rows (header + data)', 400, 'INSUFFICIENT_DATA');
+      throw new AppError(
+        'CSV file must have at least 2 rows (header + data)',
+        400,
+        'INSUFFICIENT_DATA'
+      );
     }
 
-    // Assume first row is header
-    const headers = allRows[0].map((h) => h.trim());
+    // Assume first row is headers
+    const headers = allRows[0].map((h) => String(h).trim());
     const dataRows = allRows.slice(1);
 
-    // Store in cache with unique ID
-    const previewId = `${userId}-${Date.now()}`;
-    previewCache.set(previewId, {
+    // Limit cached rows
+    const rowsToCache = dataRows.slice(0, MAX_PREVIEW_ROWS);
+    const hasMore = dataRows.length > MAX_PREVIEW_ROWS;
+
+    // Generate cursor ID
+    const cursorId = `import_${userId}_${Date.now()}`;
+
+    // Cache the data
+    rowCache.set(cursorId, {
       headers,
-      rows: dataRows,
+      rows: rowsToCache,
       totalRows: dataRows.length,
       userId,
       timestamp: Date.now(),
     });
 
-    // Auto-detect column mapping
-    const suggestedMapping = detectColumnMapping(headers);
+    // Clean up old cache entries
+    cleanupCache();
 
-    // Validate sample rows
-    const sampleSize = Math.min(20, dataRows.length);
-    const sampleRows: PreviewRow[] = [];
-
-    for (let i = 0; i < sampleSize; i++) {
-      const row = dataRows[i];
-      const rowData: Record<string, string> = {};
-      const issues: string[] = [];
-
+    // Prepare sample rows (first 20)
+    const sampleSize = Math.min(20, rowsToCache.length);
+    const sample = rowsToCache.slice(0, sampleSize).map((row) => {
+      const obj: Record<string, string> = {};
       headers.forEach((header, idx) => {
-        rowData[header] = row[idx] || '';
+        obj[header] = row[idx] || '';
       });
-
-      // Validate based on suggested mapping
-      if (suggestedMapping.amount !== undefined) {
-        const amountStr = row[suggestedMapping.amount];
-        const amount = parseFloat(amountStr?.replace(/,/g, '') || '0');
-        if (isNaN(amount) || amount <= 0) {
-          issues.push('Invalid amount');
-        }
-      }
-
-      if (suggestedMapping.date !== undefined) {
-        const dateStr = row[suggestedMapping.date];
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) {
-          issues.push('Invalid date');
-        }
-      }
-
-      sampleRows.push({
-        rowIndex: i,
-        data: rowData,
-        issues,
-      });
-    }
-
-    // Clean up old previews (older than 10 minutes)
-    const now = Date.now();
-    for (const [key, value] of previewCache.entries()) {
-      if (now - value.timestamp > 10 * 60 * 1000) {
-        previewCache.delete(key);
-      }
-    }
+      return obj;
+    });
 
     res.json({
       success: true,
       data: {
-        previewId,
+        hasHeader: true,
         headers,
-        sampleRows,
-        suggestedMapping,
+        sample,
+        cursorId,
         totalRows: dataRows.length,
-        validRows: sampleRows.filter((r) => r.issues.length === 0).length,
-        invalidRows: sampleRows.filter((r) => r.issues.length > 0).length,
+        hasMore,
       },
     });
   })
 );
 
 /**
- * POST /api/imports/commit - Commit the imported data
- * Body: { previewId, mapping: { date, amount, type, category, description, currency } }
+ * POST /api/imports/preview - Preview mapped data
+ */
+router.post(
+  '/preview',
+  authGuard,
+  asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const { cursorId, mapping, options } = previewRequestSchema.parse(req.body);
+
+    const cached = rowCache.get(cursorId);
+
+    if (!cached) {
+      throw new AppError('Import session not found or expired', 404, 'CURSOR_NOT_FOUND');
+    }
+
+    if (cached.userId !== userId) {
+      throw new AppError('Unauthorized access to import session', 403, 'FORBIDDEN');
+    }
+
+    const previewSize = Math.min(200, cached.rows.length);
+    const previewRows = [];
+    let validCount = 0;
+    let invalidCount = 0;
+
+    for (let i = 0; i < previewSize; i++) {
+      const row = cached.rows[i];
+      const result = await validateAndMapRow(
+        row,
+        mapping,
+        options || { dateFormat: 'YYYY-MM-DD', hasHeader: true },
+        userId,
+        false // don't validate foreign keys for preview
+      );
+
+      if (result.valid) {
+        validCount++;
+      } else {
+        invalidCount++;
+      }
+
+      previewRows.push({
+        ...result.data,
+        valid: result.valid,
+        errors: result.errors,
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        rows: previewRows,
+        validCount,
+        invalidCount,
+        totalRows: cached.totalRows,
+      },
+    });
+  })
+);
+
+/**
+ * POST /api/imports/commit - Commit imported data to database
  */
 router.post(
   '/commit',
   authGuard,
   asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
+    const { cursorId, mapping, options, commitAll } = commitRequestSchema.parse(req.body);
 
-    const schema = z.object({
-      previewId: z.string(),
-      mapping: z.object({
-        date: z.number().int().min(0),
-        amount: z.number().int().min(0),
-        type: z.number().int().min(0).optional(),
-        category: z.number().int().min(0).optional(),
-        description: z.number().int().min(0).optional(),
-        currency: z.number().int().min(0).optional(),
-      }),
-    });
+    const cached = rowCache.get(cursorId);
 
-    const { previewId, mapping } = schema.parse(req.body);
-
-    // Retrieve preview data
-    const previewData = previewCache.get(previewId);
-
-    if (!previewData) {
-      throw new AppError('Preview not found or expired', 404, 'PREVIEW_NOT_FOUND');
+    if (!cached) {
+      throw new AppError('Import session not found or expired', 404, 'CURSOR_NOT_FOUND');
     }
 
-    if (previewData.userId !== userId) {
-      throw new AppError('Unauthorized', 403, 'FORBIDDEN');
+    if (cached.userId !== userId) {
+      throw new AppError('Unauthorized access to import session', 403, 'FORBIDDEN');
     }
 
-    const results = {
-      success: 0,
-      failed: 0,
-      errors: [] as { row: number; error: string }[],
-    };
+    let inserted = 0;
+    let skipped = 0;
+    const errors: Array<{ row: number; message: string }> = [];
 
-    // Process each row
-    for (let i = 0; i < previewData.rows.length; i++) {
-      const row = previewData.rows[i];
+    const importOptions = options || { dateFormat: 'YYYY-MM-DD', hasHeader: true };
 
-      try {
-        // Extract values based on mapping
-        const dateStr = row[mapping.date];
-        const amountStr = row[mapping.amount];
-        const typeStr = mapping.type !== undefined ? row[mapping.type] : 'OUT';
-        const categoryStr = mapping.category !== undefined ? row[mapping.category] : null;
-        const descriptionStr = mapping.description !== undefined ? row[mapping.description] : null;
-        const currencyStr = mapping.currency !== undefined ? row[mapping.currency] : 'USD';
+    // Process in batches of 500
+    const BATCH_SIZE = 500;
+    const totalBatches = Math.ceil(cached.rows.length / BATCH_SIZE);
 
-        // Validate and parse date
-        const occurredAt = new Date(dateStr);
-        if (isNaN(occurredAt.getTime())) {
-          results.failed++;
-          results.errors.push({
-            row: i + 2,
-            error: 'Invalid date format',
-          });
-          continue;
-        }
+    for (let batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+      const batchStart = batchIdx * BATCH_SIZE;
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, cached.rows.length);
+      const batchRows = cached.rows.slice(batchStart, batchEnd);
 
-        // Parse amount (handle thousands separators)
-        const amount = parseFloat(amountStr.replace(/,/g, ''));
-        if (isNaN(amount) || amount <= 0) {
-          results.failed++;
-          results.errors.push({
-            row: i + 2,
-            error: 'Invalid amount',
-          });
-          continue;
-        }
+      const transactionsToCreate: Array<{
+        userId: string;
+        accountId: string;
+        type: 'IN' | 'OUT';
+        amount: number;
+        occurredAt: Date;
+        categoryId: string | null;
+        note: string | null;
+        currency: string;
+      }> = [];
 
-        // Determine transaction type
-        const type = typeStr.toUpperCase() === 'IN' ? 'IN' : 'OUT';
+      for (let i = 0; i < batchRows.length; i++) {
+        const rowIndex = batchStart + i;
+        const row = batchRows[i];
 
-        // Find category if provided
-        let categoryId: string | null = null;
-        if (categoryStr) {
-          const category = await prisma.category.findFirst({
-            where: {
-              name: {
-                equals: categoryStr.trim(),
-                mode: 'insensitive',
-              },
-            },
-          });
-          categoryId = category?.id || null;
-        }
+        try {
+          const result = await validateAndMapRow(row, mapping, importOptions, userId, true);
 
-        // Create transaction
-        await prisma.transaction.create({
-          data: {
+          if (!result.valid) {
+            if (commitAll) {
+              skipped++;
+              errors.push({
+                row: rowIndex + 2, // +2 for header and 0-indexing
+                message: result.errors.join(', '),
+              });
+            }
+            continue;
+          }
+
+          transactionsToCreate.push({
             userId,
-            type,
-            amount,
-            categoryId,
-            note: descriptionStr || null,
-            occurredAt,
-            currency: currencyStr,
-            accountId: DEFAULT_ACCOUNT_ID,
-          },
-        });
+            accountId: result.data.accountId || DEFAULT_ACCOUNT_ID,
+            type: result.data.type as 'IN' | 'OUT',
+            amount: result.data.amount,
+            occurredAt: new Date(result.data.txDate),
+            categoryId: result.data.categoryId || null,
+            note: result.data.note || null,
+            currency: 'VND',
+          });
+        } catch (error) {
+          skipped++;
+          errors.push({
+            row: rowIndex + 2,
+            message: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
+      }
 
-        results.success++;
-      } catch (error) {
-        logger.error({ error, row: i + 2 }, 'CSV row import error');
-        results.failed++;
-        results.errors.push({
-          row: i + 2,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
+      // Batch insert
+      if (transactionsToCreate.length > 0) {
+        try {
+          await prisma.$transaction(async (tx) => {
+            for (const txData of transactionsToCreate) {
+              await tx.transaction.create({ data: txData });
+            }
+          });
+          inserted += transactionsToCreate.length;
+        } catch (error) {
+          logger.error({ error, batch: batchIdx }, 'Batch insert failed');
+          skipped += transactionsToCreate.length;
+          errors.push({
+            row: batchStart + 2,
+            message: `Batch insert failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          });
+        }
       }
     }
 
-    // Clean up preview data
-    previewCache.delete(previewId);
+    // Clean up cache
+    rowCache.delete(cursorId);
 
     res.json({
       success: true,
       data: {
-        message: 'Import completed',
-        results,
+        inserted,
+        skipped,
+        errors: errors.slice(0, 100), // Limit error details
       },
     });
   })
 );
 
 /**
- * Auto-detect column mapping based on header names
+ * Validate and map a single row
  */
-function detectColumnMapping(headers: string[]): {
-  date?: number;
-  amount?: number;
-  type?: number;
-  category?: number;
-  description?: number;
-  currency?: number;
-} {
-  const mapping: Record<string, number> = {};
+async function validateAndMapRow(
+  row: string[],
+  mapping: ColumnMapping,
+  options: ImportOptions,
+  userId: string,
+  validateForeignKeys: boolean
+): Promise<{
+  valid: boolean;
+  data: {
+    txDate: string;
+    type: string;
+    amount: number;
+    categoryId?: string | null;
+    accountId?: string | null;
+    note?: string | null;
+  };
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  const data: any = {};
 
-  const patterns = {
-    date: /date|time|when|occurred/i,
+  // Parse date
+  try {
+    const dateStr = row[mapping.date];
+    data.txDate = parseDateString(dateStr, options.dateFormat);
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : 'Invalid date');
+  }
+
+  // Parse amount
+  try {
+    const amountStr = row[mapping.amount];
+    data.amount = parseAmountNumber(amountStr);
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : 'Invalid amount');
+  }
+
+  // Parse type
+  const typeStr = row[mapping.type] || 'OUT';
+  const normalized = typeStr.toLowerCase().trim();
+  if (['income', 'in', 'credit', '+'].includes(normalized)) {
+    data.type = 'IN';
+  } else if (['expense', 'out', 'debit', '-'].includes(normalized)) {
+    data.type = 'OUT';
+  } else {
+    data.type = 'OUT'; // Default
+  }
+
+  // Parse category (optional)
+  if (mapping.category !== undefined) {
+    const categoryName = row[mapping.category]?.trim();
+    if (categoryName) {
+      if (validateForeignKeys) {
+        const category = await prisma.category.findFirst({
+          where: {
+            name: { equals: categoryName, mode: 'insensitive' },
+          },
+        });
+        data.categoryId = category?.id || null;
+      } else {
+        data.categoryId = categoryName; // Store name for preview
+      }
+    }
+  }
+
+  // Parse account (optional)
+  if (mapping.account !== undefined) {
+    const accountName = row[mapping.account]?.trim();
+    if (accountName) {
+      if (validateForeignKeys) {
+        const account = await prisma.account.findFirst({
+          where: {
+            name: { equals: accountName, mode: 'insensitive' },
+          },
+        });
+        data.accountId = account?.id || null;
+      } else {
+        data.accountId = accountName; // Store name for preview
+      }
+    }
+  }
+
+  // Parse note (optional)
+  if (mapping.note !== undefined) {
+    const note = row[mapping.note]?.trim();
+    data.note = note || null;
+  }
+
+  return {
+    valid: errors.length === 0,
+    data,
+    errors,
+  };
+}
+
+/**
+ * Auto-detect column mapping from headers
+ */
+function detectColumnMapping(headers: string[]): Partial<ColumnMapping> {
+  const mapping: Partial<Record<keyof ColumnMapping, number>> = {};
+
+  const patterns: Record<keyof ColumnMapping, RegExp> = {
+    date: /date|time|when|occurred|txdate/i,
     amount: /amount|value|sum|total|price/i,
-    type: /type|kind|direction|in\/out/i,
-    category: /category|cat|type|group/i,
-    description: /description|note|memo|detail|comment/i,
-    currency: /currency|curr/i,
+    type: /type|kind|direction|category/i,
+    note: /note|description|memo|detail|comment/i,
+    category: /category|cat|class/i,
+    account: /account|acc|bank|wallet/i,
   };
 
   headers.forEach((header, index) => {
     const normalized = header.toLowerCase().trim();
-
     for (const [field, pattern] of Object.entries(patterns)) {
-      if (pattern.test(normalized) && mapping[field] === undefined) {
-        mapping[field] = index;
+      if (pattern.test(normalized) && mapping[field as keyof ColumnMapping] === undefined) {
+        mapping[field as keyof ColumnMapping] = index;
       }
     }
   });
 
   return mapping;
+}
+
+/**
+ * Clean up expired cache entries
+ */
+function cleanupCache() {
+  const now = Date.now();
+  for (const [key, value] of rowCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL_MS) {
+      rowCache.delete(key);
+    }
+  }
 }
 
 export default { router };

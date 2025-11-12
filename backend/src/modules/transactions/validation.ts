@@ -36,16 +36,15 @@ const baseCreateTransactionSchema = z.object({
     })
     .positive('Amount must be greater than zero')
     .max(1e11, 'Amount is too large'),
-  categoryId: z.string().min(1, 'Invalid category ID').optional(),
+  categoryId: z.string().min(1, 'Invalid category ID'),
   accountId: z.string().min(1, 'Invalid account ID'),
   note: noteField,
   description: noteField.optional(),
-  txDate: z // Renamed from occurredAt
+  txDate: z
     .string({ required_error: 'Date is required' })
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected YYYY-MM-DD')
-    .or(z.date())
-    .transform((val) => (typeof val === 'string' ? new Date(val) : val)),
-  currency: z.string().min(3).max(3).default('USD'),
+    .datetime('Date must be a valid ISO datetime string')
+    .transform((val) => new Date(val)),
+  currency: z.string().min(3).max(3).default('VND'),
 });
 
 export const createTransactionSchema = baseCreateTransactionSchema.transform(
