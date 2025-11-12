@@ -10,7 +10,7 @@ import type {
  */
 export async function fetchTransactions(params: TxFilters): Promise<TxListResponse> {
   try {
-    const response = await axiosClient.get('/api/transactions', { params });
+    const response = await axiosClient.get('/transactions', { params });
 
     if (response.data?.success === false) {
       throw new Error(response.data?.error?.message || 'Failed to fetch transactions');
@@ -34,7 +34,7 @@ export async function createTransaction(
   input: TransactionCreateInput
 ): Promise<Transaction> {
   try {
-    const response = await axiosClient.post('/api/transactions', input);
+    const response = await axiosClient.post('/transactions', input);
 
     if (response.data?.success === false) {
       throw new Error(
@@ -62,7 +62,7 @@ export async function updateTransaction(
   input: Omit<TransactionUpdateInput, 'id'>
 ): Promise<Transaction> {
   try {
-    const response = await axiosClient.patch(`/api/transactions/${id}`, input);
+    const response = await axiosClient.patch(`/transactions/${id}`, input);
 
     if (response.data?.success === false) {
       throw new Error(

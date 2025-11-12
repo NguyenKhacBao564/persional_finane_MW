@@ -10,8 +10,9 @@ import AuthRegister from '@/pages/AuthRegister';
 import Dashboard from '@/pages/Dashboard';
 import Transactions from '@/pages/Transactions';
 import NotFound from '@/pages/NotFound';
+import AppErrorBoundary from '@/pages/AppErrorBoundary';
 import { ProtectedRoute } from './ProtectedRoute';
-import { hasTokens } from '@/lib/tokens';
+import { hasValidTokens } from '@/lib/tokens';
 
 /**
  * Root redirect logic:
@@ -19,13 +20,14 @@ import { hasTokens } from '@/lib/tokens';
  * - If not authenticated → /login
  */
 function RootRedirect() {
-  const isAuthenticated = hasTokens();
+  const isAuthenticated = hasValidTokens();
   return <Navigate to={isAuthenticated ? '/transactions' : '/login'} replace />;
 }
 
 const routes: RouteObject[] = [
   {
     path: '/',
+    errorElement: <AppErrorBoundary />,
     children: [
       {
         index: true,

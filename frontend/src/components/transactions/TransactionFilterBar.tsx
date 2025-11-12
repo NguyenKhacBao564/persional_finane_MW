@@ -105,9 +105,8 @@ export function TransactionFilterBar({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                <SelectItem value="INCOME">Income</SelectItem>
-                <SelectItem value="EXPENSE">Expense</SelectItem>
-                <SelectItem value="TRANSFER">Transfer</SelectItem>
+                <SelectItem value="IN">Income</SelectItem>
+                <SelectItem value="OUT">Expense</SelectItem>
               </SelectContent>
             </Select>
           </div>

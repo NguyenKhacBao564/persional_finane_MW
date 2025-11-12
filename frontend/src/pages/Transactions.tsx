@@ -27,7 +27,7 @@ function parseFiltersFromUrl(params: URLSearchParams): TxFilters {
   if (search) filters.search = search;
 
   const type = params.get('type');
-  if (type === 'INCOME' || type === 'EXPENSE' || type === 'TRANSFER') {
+  if (type === 'IN' || type === 'OUT') {
     filters.type = type;
   }
 

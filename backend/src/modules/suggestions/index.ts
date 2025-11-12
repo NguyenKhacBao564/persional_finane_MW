@@ -40,12 +40,12 @@ class SuggestionEngine {
   };
 
   async suggest(params: {
-    description?: string;
+    note?: string;
     amount?: number;
     merchant?: string;
   }): Promise<CategorySuggestion[]> {
     const suggestions: CategorySuggestion[] = [];
-    const searchText = [params.description, params.merchant]
+    const searchText = [params.note, params.merchant]
       .filter(Boolean)
       .join(' ')
       .toLowerCase();
@@ -131,7 +131,7 @@ router.get(
 
     // Generate suggestions
     const suggestions = await suggestionEngine.suggest({
-      description: transaction.description || undefined,
+      note: transaction.note || undefined,
       amount: Number(transaction.amount),
     });
 
@@ -161,7 +161,7 @@ router.get(
     const params = schema.parse(req.query);
 
     const suggestions = await suggestionEngine.suggest({
-      description: params.note,
+      note: params.note,
       amount: params.amount,
       merchant: params.merchant,
     });

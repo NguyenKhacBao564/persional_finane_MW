@@ -14,6 +14,95 @@ import logger from '../../lib/logger';
 
 const router = Router();
 const prisma = new PrismaClient();
+const DEFAULT_ACCOUNT_ID = 'acc_cash';
+
+const categorySelect = {
+  id: true,
+  name: true,
+  type: true,
+  color: true,
+} as const;
+
+const accountSelect = {
+  id: true,
+  name: true,
+  currency: true,
+} as const;
+
+type TransactionLike = {
+  id: string;
+  occurredAt: Date | string | number;
+  type: string;
+  amount: Prisma.Decimal | number;
+  note?: string | null;
+  description?: string | null;
+  currency: string;
+  category?:
+    | {
+        id: string;
+        name: string;
+        type?: string | null;
+        color?: string | null;
+      }
+    | null;
+  account?:
+    | {
+        id: string;
+        name: string;
+        currency?: string | null;
+      }
+    | null;
+};
+
+const toIsoDate = (value: Date | string | number): string => {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    logger.warn(
+      { value },
+      'Unable to parse occurredAt value into ISO string, falling back to current time'
+    );
+    return new Date().toISOString();
+  }
+
+  return parsed.toISOString();
+};
+
+const toTxDto = <T extends TransactionLike>(transaction: T) => {
+  const note = transaction.note ?? transaction.description ?? null;
+
+  return {
+    id: transaction.id,
+    txDate: toIsoDate(transaction.occurredAt),
+    type: transaction.type,
+    amount:
+      typeof transaction.amount === 'number'
+        ? transaction.amount
+        : Number(transaction.amount),
+    note,
+    description: note,
+    currency: transaction.currency,
+    category: transaction.category
+      ? {
+          id: transaction.category.id,
+          name: transaction.category.name,
+          color: transaction.category.color ?? null,
+          type: transaction.category.type ?? null,
+        }
+      : null,
+    account: transaction.account
+      ? {
+          id: transaction.account.id,
+          name: transaction.account.name,
+          currency: transaction.account.currency ?? null,
+        }
+      : null,
+  };
+};
 
 // Configure multer for CSV upload with size limit
 const upload = multer({
@@ -41,9 +130,9 @@ router.get(
       userId,
     };
 
-    // Search query in description
+    // Search query in note
     if (filters.q) {
-      where.description = {
+      where.note = {
         contains: filters.q,
         mode: 'insensitive',
       };
@@ -59,11 +148,9 @@ router.get(
       where.categoryId = filters.categoryId;
     }
 
-    // Filter by account (if accountId field exists)
+    // Filter by account
     if (filters.accountId) {
-      // Note: Current schema doesn't have accountId on Transaction
-      // This is a placeholder for when it's added
-      // where.accountId = filters.accountId;
+      where.accountId = filters.accountId;
     }
 
     // Filter by amount range
@@ -89,9 +176,11 @@ router.get(
     }
 
     // Parse sort parameter (format: "field:order")
-    const [sortField, sortOrder] = filters.sort.split(':');
+    const [sortField, sortOrder] = filters.sort?.split(':') ?? [];
+    const normalizedField =
+      sortField === 'txDate' ? 'occurredAt' : sortField || 'occurredAt';
     const orderBy: Prisma.TransactionOrderByWithRelationInput = {
-      [sortField || 'occurredAt']: sortOrder === 'asc' ? 'asc' : 'desc',
+      [normalizedField]: sortOrder === 'asc' ? 'asc' : 'desc',
     };
 
     // Pagination
@@ -103,11 +192,10 @@ router.get(
         where,
         include: {
           category: {
-            select: {
-              id: true,
-              name: true,
-              type: true,
-            },
+            select: categorySelect,
+          },
+          account: {
+            select: accountSelect,
           },
         },
         orderBy,
@@ -121,7 +209,7 @@ router.get(
     res.json({
       success: true,
       data: {
-        items: transactions,
+        items: transactions.map(toTxDto),
         total,
         page: filters.page,
         limit: filters.limit,
@@ -146,11 +234,10 @@ router.get(
       where: { userId },
       include: {
         category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
+          select: categorySelect,
+        },
+        account: {
+          select: accountSelect,
         },
       },
       orderBy: { occurredAt: 'desc' },
@@ -160,7 +247,7 @@ router.get(
     res.json({
       success: true,
       data: {
-        items: transactions,
+        items: transactions.map(toTxDto),
       },
     });
   })
@@ -180,11 +267,10 @@ router.get(
       where: { id, userId },
       include: {
         category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
+          select: categorySelect,
+        },
+        account: {
+          select: accountSelect,
         },
         aiInsights: true,
       },
@@ -196,7 +282,10 @@ router.get(
 
     res.json({
       success: true,
-      data: transaction,
+      data: {
+        ...toTxDto(transaction),
+        aiInsights: transaction.aiInsights,
+      },
     });
   })
 );
@@ -216,27 +305,27 @@ router.post(
     const transaction = await prisma.transaction.create({
       data: {
         userId,
+        accountId: input.accountId,
         type: input.type,
         amount: input.amount,
         categoryId: input.categoryId || null,
-        description: input.description,
-        occurredAt: input.occurredAt,
+        note: input.note ?? null,
+        occurredAt: input.txDate, // Map txDate from input to occurredAt
         currency: input.currency,
       },
       include: {
         category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
+          select: categorySelect,
+        },
+        account: {
+          select: accountSelect,
         },
       },
     });
 
     res.status(201).json({
       success: true,
-      data: transaction,
+      data: toTxDto(transaction),
     });
   })
 );
@@ -268,8 +357,9 @@ router.patch(
     if (input.type !== undefined) updateData.type = input.type;
     if (input.amount !== undefined) updateData.amount = input.amount;
     if (input.categoryId !== undefined) updateData.categoryId = input.categoryId;
-    if (input.description !== undefined) updateData.description = input.description;
-    if (input.occurredAt !== undefined) updateData.occurredAt = input.occurredAt;
+    if (input.accountId !== undefined) updateData.accountId = input.accountId;
+    if (input.note !== undefined) updateData.note = input.note;
+    if (input.txDate !== undefined) updateData.occurredAt = input.txDate;
     if (input.currency !== undefined) updateData.currency = input.currency;
 
     const transaction = await prisma.transaction.update({
@@ -277,18 +367,17 @@ router.patch(
       data: updateData,
       include: {
         category: {
-          select: {
-            id: true,
-            name: true,
-            type: true,
-          },
+          select: categorySelect,
+        },
+        account: {
+          select: accountSelect,
         },
       },
     });
 
     res.json({
       success: true,
-      data: transaction,
+      data: toTxDto(transaction),
     });
   })
 );
@@ -419,9 +508,10 @@ router.post(
             type,
             amount,
             categoryId,
-            description: row.description || null,
+            note: row.description || null,
             occurredAt,
             currency: row.currency || 'USD',
+            accountId: DEFAULT_ACCOUNT_ID,
           },
         });
 

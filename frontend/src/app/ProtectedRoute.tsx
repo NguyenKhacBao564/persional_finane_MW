@@ -1,5 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { hasTokens } from '@/lib/tokens';
+import { hasValidTokens } from '@/lib/tokens';
 
 /**
  * ProtectedRoute component
@@ -15,7 +15,7 @@ import { hasTokens } from '@/lib/tokens';
  * </Route>
  */
 export function ProtectedRoute() {
-  const isAuthenticated = hasTokens();
+  const isAuthenticated = hasValidTokens();
 
   if (!isAuthenticated) {
     // Redirect to login and replace history entry

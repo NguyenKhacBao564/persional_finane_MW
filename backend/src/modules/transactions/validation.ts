@@ -11,7 +11,23 @@ export const transactionTypeSchema = z.enum(['IN', 'OUT'], {
 /**
  * Zod schema for creating a transaction
  */
-export const createTransactionSchema = z.object({
+const noteField = z
+  .string()
+  .max(500, 'Note must be 500 characters or less')
+  .optional()
+  .nullable()
+  .transform((val) => {
+    if (val === undefined) {
+      return undefined;
+    }
+    if (val === null) {
+      return null;
+    }
+    const trimmed = val.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  });
+
+const baseCreateTransactionSchema = z.object({
   type: transactionTypeSchema,
   amount: z
     .number({
@@ -20,26 +36,29 @@ export const createTransactionSchema = z.object({
     })
     .positive('Amount must be greater than zero')
     .max(1e11, 'Amount is too large'),
-  categoryId: z.string().uuid('Invalid category ID').optional(),
-  accountId: z.string().uuid('Invalid account ID').optional(),
-  description: z
-    .string()
-    .max(500, 'Description must be 500 characters or less')
-    .optional()
-    .nullable()
-    .transform((val) => val || null),
-  occurredAt: z
-    .string()
-    .datetime({ message: 'Invalid date format, expected ISO 8601' })
+  categoryId: z.string().min(1, 'Invalid category ID').optional(),
+  accountId: z.string().min(1, 'Invalid account ID'),
+  note: noteField,
+  description: noteField.optional(),
+  txDate: z // Renamed from occurredAt
+    .string({ required_error: 'Date is required' })
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected YYYY-MM-DD')
     .or(z.date())
     .transform((val) => (typeof val === 'string' ? new Date(val) : val)),
   currency: z.string().min(3).max(3).default('USD'),
 });
 
+export const createTransactionSchema = baseCreateTransactionSchema.transform(
+  ({ description, ...data }) => ({
+    ...data,
+    note: data.note ?? description ?? null,
+  })
+);
+
 /**
  * Zod schema for updating a transaction
  */
-export const updateTransactionSchema = z.object({
+const baseUpdateTransactionSchema = z.object({
   type: transactionTypeSchema.optional(),
   amount: z
     .number()
@@ -48,34 +67,37 @@ export const updateTransactionSchema = z.object({
     .optional(),
   categoryId: z
     .string()
-    .uuid('Invalid category ID')
+    .min(1, 'Invalid category ID') // Relaxed validation
     .optional()
     .nullable()
     .transform((val) => val || null),
-  accountId: z.string().uuid('Invalid account ID').optional().nullable(),
-  description: z
+  accountId: z.string().min(1, 'Invalid account ID').optional(),
+  note: noteField,
+  description: noteField.optional(),
+  txDate: z
     .string()
-    .max(500, 'Description must be 500 characters or less')
-    .optional()
-    .nullable()
-    .transform((val) => val || null),
-  occurredAt: z
-    .string()
-    .datetime({ message: 'Invalid date format, expected ISO 8601' })
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format, expected YYYY-MM-DD')
     .or(z.date())
     .transform((val) => (typeof val === 'string' ? new Date(val) : val))
     .optional(),
   currency: z.string().min(3).max(3).optional(),
 });
 
+export const updateTransactionSchema = baseUpdateTransactionSchema.transform(
+  ({ description, ...data }) => ({
+    ...data,
+    note: data.note ?? description ?? undefined,
+  })
+);
+
 /**
  * Zod schema for transaction filters/query params
  */
 export const transactionFiltersSchema = z.object({
-  q: z.string().optional(), // Search query for description
+  q: z.string().optional(), // Search query for note
   type: transactionTypeSchema.optional(),
-  categoryId: z.string().uuid().optional(),
-  accountId: z.string().uuid().optional(),
+  categoryId: z.string().min(1).optional(), // Relaxed validation
+  accountId: z.string().min(1).optional(), // Relaxed validation
   minAmount: z.coerce.number().positive().optional(),
   maxAmount: z.coerce.number().positive().optional(),
   startDate: z.coerce.date().optional(),

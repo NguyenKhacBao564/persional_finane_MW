@@ -137,7 +137,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error('Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

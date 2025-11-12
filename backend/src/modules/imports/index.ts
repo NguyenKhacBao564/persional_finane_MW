@@ -9,6 +9,7 @@ import logger from '../../lib/logger';
 
 const router = Router();
 const prisma = new PrismaClient();
+const DEFAULT_ACCOUNT_ID = 'acc_cash';
 
 // Configure multer with size limit
 const upload = multer({
@@ -250,9 +251,10 @@ router.post(
             type,
             amount,
             categoryId,
-            description: descriptionStr || null,
+            note: descriptionStr || null,
             occurredAt,
             currency: currencyStr,
+            accountId: DEFAULT_ACCOUNT_ID,
           },
         });
 
