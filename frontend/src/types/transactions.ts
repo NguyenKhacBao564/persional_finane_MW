@@ -1,4 +1,4 @@
-export type TxType = 'INCOME' | 'EXPENSE' | 'TRANSFER';
+export type TxType = 'IN' | 'OUT';
 
 export interface TxCategory {
   id: string;

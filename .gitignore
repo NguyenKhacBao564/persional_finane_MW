@@ -26,3 +26,7 @@ logs
 
 # Docker
 *.pid
+
+# Ignore Windows special files
+backend/nul
+nul

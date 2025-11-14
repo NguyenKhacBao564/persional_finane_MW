@@ -16,9 +16,9 @@ export const transactionCreateSchema = z.object({
       { message: 'Invalid date format' }
     )
     .transform((val) => {
-      // Ensure YYYY-MM-DD format
-      const date = new Date(val);
-      return date.toISOString().split('T')[0];
+      // Convert YYYY-MM-DD to ISO datetime string
+      const date = new Date(val + 'T00:00:00.000Z');
+      return date.toISOString();
     }),
 
   type: z.enum(['IN', 'OUT'], {

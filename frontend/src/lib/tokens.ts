@@ -1,9 +1,16 @@
+import { jwtDecode } from 'jwt-decode';
+
 export const ACCESS_KEY = 'pfm_access';
 export const REFRESH_KEY = 'pfm_refresh';
 
 export type Tokens = {
   accessToken: string;
   refreshToken: string;
+};
+
+type DecodedToken = {
+  exp: number;
+  [key: string]: any;
 };
 
 const hasWindow = typeof window !== 'undefined';
@@ -30,6 +37,26 @@ export function clearTokens(): void {
   window.localStorage.removeItem(REFRESH_KEY);
 }
 
-export function hasTokens(): boolean {
-  return getAccessToken() !== null && getRefreshToken() !== null;
+/**
+ * Checks for existence of access/refresh tokens and validates the access
+ * token is not expired.
+ *
+ * @returns boolean
+ */
+export function hasValidTokens(): boolean {
+  const accessToken = getAccessToken();
+  const refreshToken = getRefreshToken();
+
+  if (!accessToken || !refreshToken) {
+    return false;
+  }
+
+  try {
+    const decoded = jwtDecode<DecodedToken>(accessToken);
+    const hasExpired = decoded.exp * 1000 < Date.now();
+    return !hasExpired;
+  } catch (e) {
+    // If token is malformed, treat as invalid
+    return false;
+  }
 }

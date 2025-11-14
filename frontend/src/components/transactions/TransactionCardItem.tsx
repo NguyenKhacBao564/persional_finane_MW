@@ -1,6 +1,6 @@
 import type { Transaction } from '@/types/transactions';
 import { Badge } from '@/ui/badge';
-import { formatCurrency, formatDate, badgeByType } from '@/lib/formatters';
+import { formatCurrency, formatDate, badgeByType, resolveTxDate } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { EditTransactionDialog } from './EditTransactionDialog';
 
@@ -17,7 +17,7 @@ export function TransactionCardItem({ transaction: tx }: TransactionCardItemProp
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
           <div className="text-sm text-muted-foreground mb-1">
-            {formatDate(tx.txDate)}
+            {formatDate(resolveTxDate(tx))}
           </div>
           <Badge className={typeBadge.className}>{typeBadge.label}</Badge>
         </div>

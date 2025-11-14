@@ -17,7 +17,7 @@ export async function fetchCategorySuggestionsByTxId(
   }
 
   try {
-    const response = await axiosClient.get(`/api/transactions/${txId}/suggest-category`);
+    const response = await axiosClient.get(`/transactions/${txId}/suggest-category`);
 
     if (response.data?.success === false) {
       throw new Error(
@@ -49,7 +49,7 @@ export async function fetchCategorySuggestionsByText(params: {
   }
 
   try {
-    const response = await axiosClient.get('/api/categories/suggest', { params });
+    const response = await axiosClient.get('/categories/suggest', { params });
 
     if (response.data?.success === false) {
       throw new Error(
@@ -81,7 +81,7 @@ export async function applyCategory(
   }
 
   try {
-    const response = await axiosClient.post(`/api/transactions/${txId}/category`, {
+    const response = await axiosClient.post(`/transactions/${txId}/category`, {
       categoryId,
     });
 
@@ -113,7 +113,7 @@ export async function applyCategoryBulk(
   }
 
   try {
-    const response = await axiosClient.post('/api/transactions/category/bulk', {
+    const response = await axiosClient.post('/transactions/category/bulk', {
       items,
     });
 

@@ -8,7 +8,7 @@ import {
   TableRow,
 } from '@/ui/table';
 import { Badge } from '@/ui/badge';
-import { formatCurrency, formatDate, badgeByType } from '@/lib/formatters';
+import { formatCurrency, formatDate, badgeByType, resolveTxDate } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 import { EditTransactionDialog } from './EditTransactionDialog';
 import { CategorySuggestChips } from './CategorySuggestChips';
@@ -74,7 +74,7 @@ export function TransactionTable({
       </TableHeader>
       <TableBody>
         {transactions.map((tx) => {
-          const typeBadge = badgeByType(tx.type);
+          const typeBadge = badgeByType(tx.type ?? 'UNKNOWN'); // Thêm fallback cho tx.type nếu undefined
           const isNegative = tx.amount < 0;
 
           const isSelected = selection.includes(tx.id);
@@ -93,10 +93,12 @@ export function TransactionTable({
                 </TableCell>
               )}
               <TableCell className="font-medium">
-                {formatDate(tx.txDate)}
+                {formatDate(resolveTxDate(tx))}
               </TableCell>
               <TableCell>
-                <Badge className={typeBadge.className}>{typeBadge.label}</Badge>
+                <Badge className={typeBadge?.className ?? ''}> {/* Fallback nếu typeBadge undefined */}
+                  {typeBadge?.label ?? 'Unknown'}
+                </Badge>
               </TableCell>
               <TableCell className="min-w-[200px]">
                 {tx.category ? (
@@ -129,7 +131,7 @@ export function TransactionTable({
                 )}
               </TableCell>
               <TableCell>
-                {tx.account?.name || (
+                {tx.account?.name || ( /* Thêm optional chaining cho account */
                   <span className="text-muted-foreground">—</span>
                 )}
               </TableCell>
@@ -141,7 +143,7 @@ export function TransactionTable({
                     : 'text-green-600 dark:text-green-400'
                 )}
               >
-                {isNegative ? '−' : '+'} {formatCurrency(tx.amount, tx.currency)}
+                {isNegative ? '−' : '+'} {formatCurrency(tx.amount, tx.currency ?? 'USD')} {/* Fallback cho currency nếu undefined */}
               </TableCell>
               <TableCell>
                 <EditTransactionDialog transaction={tx} variant="icon" />
