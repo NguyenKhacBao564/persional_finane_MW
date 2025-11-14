@@ -35,7 +35,7 @@ Hãy đọc kỹ tin nhắn của người dùng và trả về phản hồi the
 }
 """
 
-user_input = "Gợi ý chi tiêu tháng này cho tôi"
+user_input = "Hôm nay thời tiết ở Hà Nội như thế nào?"
 
 response = client.models.generate_content(
     model="gemini-2.5-flash",
