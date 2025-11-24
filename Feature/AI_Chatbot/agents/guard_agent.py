@@ -1,158 +1,174 @@
+"""
+Guard Agent - Content filtering for personal finance chatbot
+Filters out non-finance related queries
+"""
+
 import os
 import json
-from typing import Dict, Any, Optional
+import logging
+import re
+from typing import Dict, Any
 from dotenv import load_dotenv
 from google import genai
-from utils import get_chatbot_response_gemini
+
+load_dotenv()
+
+logger = logging.getLogger(__name__)
+
 
 class GuardAgent:
     """
-    Guard Agent for filtering user messages in personal finance AI chatbot.
-    Uses Gemini to determine if user requests are relevant to personal finance tasks.
+    Guard Agent for filtering user queries.
+    Only allows personal finance-related questions.
     """
-
+    
     def __init__(self, model_name: str = "gemini-2.5-flash"):
         """
-        Initialize the GuardAgent with Gemini client and system prompt.
-
+        Initialize GuardAgent with Gemini client
+        
         Args:
-            model_name (str): Gemini model to use for filtering
+            model_name: Gemini model for filtering
         """
-        # Load .env file
-        load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
-
-        # Initialize Gemini client
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError("GEMINI_API_KEY environment variable is not set")
-
+            raise ValueError("GEMINI_API_KEY not found in environment")
+        
         self.client = genai.Client(api_key=api_key)
         self.model_name = model_name
-
-        # System prompt for content filtering
-        self.system_prompt = """
-Bạn là một trợ lý AI hữu ích dành riêng cho ứng dụng quản lý tài chính cá nhân.
-
-Nhiệm vụ của bạn là xác định xem yêu cầu hoặc câu hỏi của người dùng có liên quan đến chức năng của ứng dụng tài chính cá nhân hay không.
-
-Người dùng ĐƯỢC PHÉP:
-1. Hỏi về việc theo dõi chi tiêu, thu nhập hoặc ngân sách cá nhân.
-2. Hỏi về các thống kê, biểu đồ, báo cáo chi tiêu hoặc xu hướng tài chính.
-3. Hỏi về mục tiêu tiết kiệm, kế hoạch chi tiêu, hoặc cách phân bổ ngân sách.
-4. Thêm, sửa, xóa hoặc xem các giao dịch, danh mục, tài khoản, ngân sách.
-5. Hỏi về gợi ý tối ưu chi tiêu, phân tích thói quen chi tiêu, hoặc đề xuất tiết kiệm.
-
-Người dùng KHÔNG ĐƯỢC PHÉP:
-1. Hỏi về các chủ đề không liên quan đến tài chính cá nhân hoặc ứng dụng (ví dụ: thời tiết, tin tức, lập trình, đời sống, giải trí...).
-2. Yêu cầu các thông tin nhạy cảm hoặc cá nhân của người khác.
-3. Yêu cầu tư vấn tài chính phi pháp (trốn thuế, đầu tư lừa đảo, cờ bạc, v.v.).
-4. Hỏi về việc lập trình, sửa mã nguồn, hoặc chi tiết kỹ thuật hệ thống.
-
-Hãy đọc kỹ tin nhắn của người dùng và trả về phản hồi theo đúng cấu trúc JSON bên dưới (không thêm ký tự nào khác ngoài JSON):
-
-{
-  "chain_of_thought": "Giải thích ngắn gọn vì sao tin nhắn thuộc nhóm được phép hoặc không được phép, dựa theo các quy tắc trên.",
-  "decision": "allowed" hoặc "not allowed",
-  "message": "Để trống nếu allowed. Nếu not allowed, hãy ghi: 'Xin lỗi, tôi chỉ có thể hỗ trợ các tác vụ liên quan đến quản lý tài chính cá nhân như theo dõi chi tiêu, ngân sách, hoặc mục tiêu tiết kiệm.'"
-}
-"""
-
+        
+        logger.info(f"Initialized GuardAgent with model {model_name}")
+    
     def filter_message(self, user_input: str) -> Dict[str, Any]:
         """
-        Filter user message to determine if it's allowed for personal finance chatbot.
-
+        Filter user message to check if finance-related
+        
         Args:
-            user_input (str): User message to filter
-
+            user_input: User's query
+        
         Returns:
-            Dict[str, Any]: Filter result with chain_of_thought, decision, and message
+            Dict with decision, reason, and message
         """
+        # System prompt for filtering
+        system_prompt = """
+Bạn là một bộ lọc nội dung cho ứng dụng quản lý tài chính cá nhân tiếng Việt.
+Nhiệm vụ: Xác định câu hỏi có LIÊN QUAN đến quản lý tài chính cá nhân hay không.
+
+CHỦ ĐỀ ĐƯỢC PHÉP (allowed) - CHỈ về TÀI CHÍNH CÁ NHÂN:
+1. Giao dịch tài chính (chi tiêu, thu nhập, xem/thêm/sửa giao dịch)
+2. Ngân sách (ngân sách tháng, kiểm soát chi phí, còn lại bao nhiêu)
+3. Mục tiêu tiết kiệm (quỹ dự phòng, kế hoạch tiết kiệm, tiến độ)
+4. Phân tích chi tiêu (theo danh mục: ăn uống, đi lại, mua sắm, v.v.)
+5. Quản lý thu nhập (lương, thu nhập phụ, freelance)
+6. Báo cáo tài chính cá nhân (thống kê, biểu đồ, xu hướng)
+7. Tư vấn tiết kiệm và quản lý tiền bạc cá nhân
+8. Hỏi số liệu cụ thể (đã chi bao nhiêu, còn bao nhiêu, phần trăm ngân sách)
+
+CHỦ ĐỀ KHÔNG ĐƯỢC PHÉP (not allowed) - TẤT CẢ chủ đề KHÔNG phải tài chính:
+1. Thời tiết (ở bất kỳ đâu)
+2. Tin tức, thể thao, giải trí
+3. Hỗ trợ kỹ thuật (lập trình, máy tính, điện thoại, phần mềm)
+4. Hoạt động bất hợp pháp
+5. Thông tin cá nhân người khác
+6. Phim, nhạc, game, sách, truyện
+7. Du lịch, ẩm thực (TRỪ KHI hỏi về CHI PHÍ du lịch/ăn uống)
+8. Sức khỏe, y tế (TRỪ KHI hỏi về CHI PHÍ y tế)
+9. Giáo dục (TRỪ KHI hỏi về HỌC PHÍ, chi phí học tập)
+10. Định nghĩa từ, dịch thuật, kiến thức chung
+11. Chào hỏi đơn thuần (xin chào, hi, hello) → allowed
+12. Bất kỳ chủ đề nào KHÔNG liên quan TRỰC TIẾP đến QUẢN LÝ TIỀN BẠC
+
+LƯU Ý QUAN TRỌNG:
+- "Tôi đã chi bao nhiêu cho ăn uống?" → ALLOWED (hỏi về CHI TIÊU)
+- "Quán ăn ngon ở đâu?" → NOT ALLOWED (không hỏi về tiền)
+- "Thời tiết hôm nay?" → NOT ALLOWED (hoàn toàn không liên quan)
+- "Chuyến du lịch Nha Trang tốn bao nhiêu?" → ALLOWED (hỏi về CHI PHÍ)
+- "xin chào", "hi", "hello" → ALLOWED (chào hỏi lịch sự)
+
+Trả về JSON (KHÔNG thêm text nào khác):
+{
+  "decision": "allowed" hoặc "not allowed",
+  "reason": "Lý do ngắn gọn (tiếng Việt)"
+}
+"""
+        
         try:
-            # Prepare messages for Gemini
-            messages = [
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": f"Người dùng: {user_input}"}
-            ]
-
-            # Get response from Gemini using utility function
-            response_text = get_chatbot_response_gemini(
-                client=self.client,
-                model_name=self.model_name,
-                messages=messages,
-                temperature=0
+            # Call Gemini API
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=f"{system_prompt}\n\nCâu hỏi người dùng: {user_input}",
+                config={"temperature": 0}
             )
-
-            # Try to parse JSON response
+            
+            response_text = response.text.strip()
+            
+            # Parse JSON response
             try:
-                # First try direct JSON parsing
+                # Try direct parsing
                 result = json.loads(response_text)
             except json.JSONDecodeError:
-                # If that fails, try to extract JSON from the response
-                import re
-                json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+                # Extract JSON from markdown or mixed text
+                json_match = re.search(r'\{[^{}]*\}', response_text, re.DOTALL)
                 if json_match:
                     try:
                         result = json.loads(json_match.group(0))
                     except json.JSONDecodeError:
-                        # If still fails, treat as not allowed
+                        # Fallback: reject if can't parse
+                        logger.warning(f"JSON parse failed: {response_text[:100]}")
                         return {
-                            "chain_of_thought": f"JSON parsing failed - response: {response_text[:100]}...",
                             "decision": "not allowed",
-                            "message": "Xin lỗi, tôi chỉ có thể hỗ trợ các tác vụ liên quan đến quản lý tài chính cá nhân như theo dõi chi tiêu, ngân sách, hoặc mục tiêu tiết kiệm."
+                            "reason": f"Parse error: {response_text[:50]}..."
                         }
                 else:
-                    # No JSON found, treat as not allowed
+                    # No JSON found
+                    logger.warning(f"No JSON in response: {response_text[:100]}")
                     return {
-                        "chain_of_thought": f"No JSON found in response - response: {response_text[:100]}...",
                         "decision": "not allowed",
-                        "message": "Xin lỗi, tôi chỉ có thể hỗ trợ các tác vụ liên quan đến quản lý tài chính cá nhân như theo dõi chi tiêu, ngân sách, hoặc mục tiêu tiết kiệm."
+                        "reason": "No valid JSON response"
                     }
-
-            # Validate required fields
-            if not all(key in result for key in ["chain_of_thought", "decision", "message"]):
-                # If required fields are missing, treat as not allowed
+            
+            # Validate result
+            if "decision" not in result:
+                logger.warning(f"No 'decision' field in: {result}")
                 return {
-                    "chain_of_thought": "Response format validation failed - missing required fields",
                     "decision": "not allowed",
-                    "message": "Xin lỗi, tôi chỉ có thể hỗ trợ các tác vụ liên quan đến quản lý tài chính cá nhân như theo dõi chi tiêu, ngân sách, hoặc mục tiêu tiết kiệm."
+                    "reason": "Invalid response format"
                 }
-
-            # Ensure decision is valid
-            if result["decision"] not in ["allowed", "not allowed"]:
-                result["decision"] = "not allowed"
-                result["message"] = "Xin lỗi, tôi chỉ có thể hỗ trợ các tác vụ liên quan đến quản lý tài chính cá nhân như theo dõi chi tiêu, ngân sách, hoặc mục tiêu tiết kiệm."
-
+            
+            logger.debug(f"Filter result: {result['decision']} - {result.get('reason', '')}")
             return result
-
+        
         except Exception as e:
-            # If API call fails, treat as not allowed
+            # On error, reject to be safe
+            logger.error(f"GuardAgent error: {e}")
             return {
-                "chain_of_thought": f"API call failed: {str(e)}",
                 "decision": "not allowed",
-                "message": "Xin lỗi, tôi chỉ có thể hỗ trợ các tác vụ liên quan đến quản lý tài chính cá nhân như theo dõi chi tiêu, ngân sách, hoặc mục tiêu tiết kiệm."
+                "reason": f"Error: {str(e)}"
             }
-
+    
     def is_allowed(self, user_input: str) -> bool:
         """
-        Quick check if message is allowed (returns boolean).
-
+        Quick check if query is allowed
+        
         Args:
-            user_input (str): User message to check
-
+            user_input: User's query
+        
         Returns:
-            bool: True if message is allowed, False otherwise
+            True if allowed, False otherwise
         """
         result = self.filter_message(user_input)
         return result.get("decision") == "allowed"
-
-    def get_rejection_message(self, user_input: Optional[str] = None) -> str:
+    
+    def get_rejection_message(self, language: str = "vi") -> str:
         """
-        Get the standard rejection message for disallowed content.
-
+        Get rejection message in specified language
+        
         Args:
-            user_input (str, optional): User input (not used but kept for consistency)
-
+            language: 'vi' for Vietnamese, 'en' for English
+        
         Returns:
-            str: Rejection message
+            Rejection message string
         """
-        return "Xin lỗi, tôi chỉ có thể hỗ trợ các tác vụ liên quan đến quản lý tài chính cá nhân như theo dõi chi tiêu, ngân sách, hoặc mục tiêu tiết kiệm."
+        if language == "vi":
+            return "Xin lỗi, câu hỏi này không nằm trong phạm vi tài chính cá nhân."
+        else:
+            return "I'm sorry, this question is not within the scope of personal finance."

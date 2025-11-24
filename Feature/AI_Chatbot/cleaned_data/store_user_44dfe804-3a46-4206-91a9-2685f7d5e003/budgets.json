@@ -1,0 +1,12 @@
+[
+  {
+    "budget_id": "c6fe0e64-1882-4612-98b0-5d0ace9ee72b",
+    "user_id": "44dfe804-3a46-4206-91a9-2685f7d5e003",
+    "category_id": "afb77ea1-a4c6-4239-8efe-4bdd6b8e6ab8",
+    "category_name": "Food & Dining",
+    "category_type": "EXPENSE",
+    "amount": "500.00",
+    "period": "MONTHLY",
+    "updated_at": "2025-11-08T16:03:26.983Z"
+  }
+]

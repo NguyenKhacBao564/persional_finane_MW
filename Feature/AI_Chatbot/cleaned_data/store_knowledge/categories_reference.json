@@ -1,0 +1,44 @@
+[
+  {
+    "id": "afb77ea1-a4c6-4239-8efe-4bdd6b8e6ab8",
+    "name": "Food & Dining",
+    "type": "EXPENSE",
+    "color": null
+  },
+  {
+    "id": "f7845bcd-6b04-45d0-89e7-33d8c60c05f0",
+    "name": "Transportation",
+    "type": "EXPENSE",
+    "color": null
+  },
+  {
+    "id": "bc3def2a-9052-4964-9901-9e252455c7c2",
+    "name": "Shopping",
+    "type": "EXPENSE",
+    "color": null
+  },
+  {
+    "id": "953da20f-02b9-4dd8-be1a-29b8c5686705",
+    "name": "Entertainment",
+    "type": "EXPENSE",
+    "color": null
+  },
+  {
+    "id": "c15a91b7-8567-4614-867c-3cbb03738f6f",
+    "name": "Salary",
+    "type": "INCOME",
+    "color": null
+  },
+  {
+    "id": "08b063e6-546a-4ea5-a419-ffd5da2514be",
+    "name": "Freelance",
+    "type": "INCOME",
+    "color": null
+  },
+  {
+    "id": "1e7db404-b004-4306-b05d-3d02dd9229dd",
+    "name": "Transfer",
+    "type": "TRANSFER",
+    "color": null
+  }
+]
