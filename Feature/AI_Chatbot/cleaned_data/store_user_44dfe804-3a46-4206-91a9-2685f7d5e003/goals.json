@@ -1,0 +1,13 @@
+[
+  {
+    "goal_id": "eaf0dcae-2894-4549-872c-b9e3e4fcd296",
+    "user_id": "44dfe804-3a46-4206-91a9-2685f7d5e003",
+    "title": "Emergency Fund",
+    "target_amount": "10000.00",
+    "target_date": "2026-12-31T00:00:00.000Z",
+    "progress": "2500.00",
+    "months_to_target": 13,
+    "required_monthly_contribution": "576.92",
+    "updated_at": "2025-11-08T16:03:26.990Z"
+  }
+]
