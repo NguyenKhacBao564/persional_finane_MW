@@ -35,6 +35,18 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+    # 1. Copy file docker-compose.prod.yml lên server
+    - uses: actions/checkout@v3
+    - name: Copy Compose File to Server
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "docker-compose.prod.yml"
+        target: "finance-project/" # Folder trên server
+
+    # 2. Thực hiện lệnh Deploy
     - name: Deploy via SSH
       uses: appleboy/ssh-action@master
       with:
@@ -42,9 +54,19 @@ jobs:
         username: ${{ secrets.USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          # Vào thư mục dự án
+          # Tạo folder nếu chưa có (phòng hờ)
+          mkdir -p ~/finance-project
           cd ~/finance-project
-          # Pull image mới nhất về
-          docker-compose -f docker-compose.prod.yml pull
-          # Khởi động lại container
-          docker-compose -f docker-compose.prod.yml up -d
+          
+          # Login Docker Hub (Optional - để tránh lỗi rate limit hoặc repo private)
+          echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+
+          # Pull image mới nhất
+          # LƯU Ý: Dùng 'docker compose' thay vì 'docker-compose'
+          docker compose -f docker-compose.prod.yml pull
+          
+          # Khởi động container (recreate để cập nhật image mới)
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans
+          
+          # Dọn dẹp image cũ cho đỡ tốn ổ cứng
+          docker image prune -f
