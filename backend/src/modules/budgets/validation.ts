@@ -32,12 +32,15 @@ export const listQuerySchema = z.object({
 });
 
 export const summaryQuerySchema = z.object({
-  periodMonth: z.string()
-    .regex(monthRegex, 'Month must be in YYYY-MM format')
-    .or(z.string().regex(/^\d{4}-\d{2}$/).transform((val) => val)),
-  month: z.string().regex(monthRegex).optional(), // Accept both params
+  // Cho phép cả periodMonth HOẶC month, ưu tiên cái nào có giá trị
+  periodMonth: z.string().optional(),
+  month: z.string().regex(monthRegex, 'Month must be in YYYY-MM format').optional(),
+}).refine((data) => data.periodMonth || data.month, {
+  message: "Month is required",
+  path: ["month"]
 }).transform((val) => ({
-  month: val.periodMonth || val.month!,
+  // Chuẩn hóa về 1 field duy nhất là 'month' để logic bên trong sử dụng
+  month: val.periodMonth || val.month!, 
 }));
 
 export const updateBudgetSchema = z.object({

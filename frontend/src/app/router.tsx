@@ -14,6 +14,7 @@ import BudgetForm from '@/pages/BudgetForm';
 import SavingGoalForm from '@/pages/SavingGoalForm';
 import ImportCsv from '@/pages/ImportCsv';
 import NotFound from '@/pages/NotFound';
+import Settings from '@/pages/Settings';
 import AppErrorBoundary from '@/pages/AppErrorBoundary';
 import { ProtectedRoute } from './ProtectedRoute';
 import { AppLayout } from '@/layouts/AppLayout';
@@ -70,7 +71,7 @@ const routes: RouteObject[] = [
               },
               {
                 path: '/settings',
-                element: <div>Settings page coming soon</div>,
+                element: <Settings />,
               },
             ],
           },

@@ -1,5 +1,6 @@
 """
 FileSearch client wrapper for agents
+(Modified for Long Context Window)
 """
 
 import os
@@ -17,10 +18,14 @@ logger = logging.getLogger(__name__)
 
 
 class FileSearchClient:
-    """Wrapper for Gemini File Search operations"""
+    """Wrapper for Gemini Long Context operations"""
     
     def __init__(self, api_key: Optional[str] = None, knowledge_store_id: Optional[str] = None):
-        """Initialize client"""
+        """
+        Initialize client
+        knowledge_store_id is kept for compatibility but not used as a store ID.
+        We rely on UserContext to pass file URIs.
+        """
         self.api_key = api_key or os.getenv('GEMINI_API_KEY')
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY not found")
@@ -28,7 +33,7 @@ class FileSearchClient:
         self.client = genai.Client(api_key=self.api_key)
         self.knowledge_store_id = knowledge_store_id
         
-        logger.info("Initialized FileSearchClient")
+        logger.info("Initialized FileSearchClient (Long Context Mode)")
     
     def query(
         self,
@@ -37,45 +42,62 @@ class FileSearchClient:
         options: Optional[QueryOptions] = None
     ) -> Dict[str, Any]:
         """
-        Query user's file search store with context
-        
-        Args:
-            user_context: User context with store_id
-            query_text: Natural language query
-            options: Query options
-        
-        Returns:
-            Dictionary with search results
+        Query user's files using long context
         """
         if options is None:
             options = QueryOptions()
         
-        # Build store list
-        store_ids = [user_context.store_id]
+        # Collect file resources
+        file_resources = []
         
-        if options.include_knowledge_store and self.knowledge_store_id:
-            store_ids.append(self.knowledge_store_id)
+        # Add user files
+        if user_context.file_resources:
+            file_resources.extend(user_context.file_resources)
         
-        # Enhance query with user context
+        # Enhance query
         enhanced_query = self._enhance_query(query_text, user_context)
         
-        logger.info(f"Querying stores for user {user_context.user_name}: {query_text}")
-        logger.debug(f"Enhanced query: {enhanced_query}")
-        logger.debug(f"Store IDs: {store_ids}")
+        logger.info(f"Querying for user {user_context.user_name}: {query_text}")
+        logger.debug(f"Files: {len(file_resources)}")
         
         try:
+            # Construct parts list
+            parts = []
+            
+            # Add text query part
+            parts.append(types.Part(text=enhanced_query))
+            
+            # Add file parts
+            for res in file_resources:
+                uri = res.get('uri')
+                name = res.get('name', '')
+                stored_mime = res.get('mime_type')
+                
+                # Use stored mime type if available, otherwise guess
+                if stored_mime:
+                    mime_type = stored_mime
+                else:
+                    mime_type = "text/plain"
+                    if name.lower().endswith(".json"): 
+                        mime_type = "application/json"
+                    elif name.lower().endswith(".csv"): 
+                        mime_type = "text/csv"
+                    elif name.lower().endswith(".pdf"):
+                        mime_type = "application/pdf"
+                
+                # Override unsupported mime types
+                if mime_type == "application/json":
+                    mime_type = "text/plain"
+                
+                # Create file part
+                parts.append(types.Part.from_uri(file_uri=uri, mime_type=mime_type))
+
+            # Create content object
+            content = types.Content(role="user", parts=parts)
+
             response = self.client.models.generate_content(
                 model=options.model,
-                contents=enhanced_query,
-                config=types.GenerateContentConfig(
-                    tools=[
-                        types.Tool(
-                            file_search=types.FileSearch(
-                                file_search_store_names=store_ids
-                            )
-                        )
-                    ]
-                )
+                contents=content  # Pass single Content object
             )
             
             result_text = response.text
@@ -86,7 +108,7 @@ class FileSearchClient:
                 "success": True,
                 "result": result_text,
                 "user_id": user_context.user_id,
-                "stores": store_ids
+                "files_used": len(file_resources)
             }
         
         except Exception as e:
@@ -96,7 +118,7 @@ class FileSearchClient:
                 "error": str(e),
                 "user_id": user_context.user_id
             }
-    
+
     def _enhance_query(self, query: str, context: UserContext) -> str:
         """Enhance query with user context"""
         
@@ -131,11 +153,9 @@ Instructions:
         return instructions
     
     def get_user_store_id(self, user_id: str, store_mapping: Dict[str, Any]) -> Optional[str]:
-        """Get store ID for a user from mapping"""
+        """Get store ID (kept for interface compatibility)"""
         user_stores = store_mapping.get('user_stores', {})
         user_data = user_stores.get(user_id)
-        
         if user_data:
             return user_data.get('store_id')
-        
         return None

@@ -2,7 +2,7 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { ZodError } from 'zod';
-import { registerSchema, loginSchema, refreshTokenSchema } from './validation';
+import { registerSchema, loginSchema, refreshTokenSchema, changePasswordSchema } from './validation';
 import * as authService from './service';
 import { authGuard, optionalAuth } from './middleware';
 
@@ -122,6 +122,46 @@ router.post('/refresh', async (req: Request, res: Response) => {
       });
     } else if (error instanceof Error) {
       res.status(401).json({
+        success: false,
+        error: {
+          message: error.message,
+        },
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'An unexpected error occurred',
+        },
+      });
+    }
+  }
+});
+
+// POST /api/auth/change-password
+router.post('/change-password', authGuard, async (req: Request, res: Response) => {
+  try {
+    const input = changePasswordSchema.parse(req.body);
+    await authService.changePassword(req.user!.id, input);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        message: 'Password changed successfully',
+      },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({
+        success: false,
+        error: {
+          message: error.errors.map(e => e.message).join(', '),
+          code: 'VALIDATION_ERROR',
+        },
+      });
+    } else if (error instanceof Error) {
+      const statusCode = error.message === 'Incorrect current password' ? 401 : 400;
+      res.status(statusCode).json({
         success: false,
         error: {
           message: error.message,

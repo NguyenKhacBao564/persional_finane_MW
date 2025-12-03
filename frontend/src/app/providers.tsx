@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
+import { ThemeProvider } from '@/components/theme-provider';
 
 type AppProvidersProps = {
   children: ReactNode;
@@ -19,8 +20,10 @@ const queryClient = new QueryClient({
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
-      <Toaster richColors position="top-center" />
+      <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme">
+        {children}
+        <Toaster richColors position="top-center" />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

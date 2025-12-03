@@ -14,6 +14,7 @@ class UserContext:
     user_name: str
     store_id: str
     active_month: str  # YYYY-MM format
+    file_resources: List[Dict[str, str]] = None  # List of {'uri': ..., 'name': ...}
     currency: str = "USD"
     language: str = "vi"  # Language: 'vi' (Vietnamese) or 'en' (English)
 
@@ -23,7 +24,7 @@ class QueryOptions:
     """Options for file search queries"""
     include_knowledge_store: bool = True
     max_results: int = 10
-    model: str = "gemini-2.5-flash"
+    model: str = "gemini-2.0-flash"
 
 
 @dataclass

@@ -1,59 +1,107 @@
 {
   "user_stores": {
-    "5a51c799-7ff2-41c1-81c9-9affc5d72555": {
-      "user_name": "tam8",
-      "store_id": "fileSearchStores/usertam85a51c799-syck394ttgl4",
-      "store_name": "user_tam8_5a51c799",
+    "44dfe804-3a46-4206-91a9-2685f7d5e003": {
+      "user_name": "Demo User",
+      "store_id": "user_44dfe804",
       "files": [
-        "user_profile.json"
+        {
+          "name": "goals.json",
+          "uri": "https://generativelanguage.googleapis.com/v1beta/files/r49cwecohqm0",
+          "mime_type": "text/plain"
+        },
+        {
+          "name": "summary_2025-11.md",
+          "uri": "https://generativelanguage.googleapis.com/v1beta/files/tftwhlxfcdi0",
+          "mime_type": "text/plain"
+        },
+        {
+          "name": "user_profile.json",
+          "uri": "https://generativelanguage.googleapis.com/v1beta/files/45smwiw61xqw",
+          "mime_type": "text/plain"
+        },
+        {
+          "name": "budgets.json",
+          "uri": "https://generativelanguage.googleapis.com/v1beta/files/s02kaqyh6yo3",
+          "mime_type": "text/plain"
+        },
+        {
+          "name": "transactions_2025-11.csv",
+          "uri": "https://generativelanguage.googleapis.com/v1beta/files/f5ik40wjjn9m",
+          "mime_type": "text/csv"
+        }
       ],
       "failed": []
     },
     "d3067b3c-bc85-474f-bc49-03396f5e340d": {
       "user_name": "Test User",
-      "store_id": "fileSearchStores/usertest-userd3067b3c-kcephcbmcakd",
-      "store_name": "user_Test User_d3067b3c",
+      "store_id": "user_d3067b3c",
       "files": [
-        "user_profile.json"
+        {
+          "name": "user_profile.json",
+          "uri": "https://generativelanguage.googleapis.com/v1beta/files/glja6rd95l4y",
+          "mime_type": "text/plain"
+        }
       ],
       "failed": []
     },
     "4b000d62-7fa5-418d-8dc1-f6e98795ebbd": {
       "user_name": "tam4",
-      "store_id": "fileSearchStores/usertam44b000d62-0ce9ro822pyl",
-      "store_name": "user_tam4_4b000d62",
+      "store_id": "user_4b000d62",
       "files": [
-        "transactions_2025-11.csv",
-        "summary_2025-11.md",
-        "user_profile.json"
+        {
+          "name": "summary_2025-11.md",
+          "uri": "https://generativelanguage.googleapis.com/v1beta/files/fchwqnyzogr4",
+          "mime_type": "text/plain"
+        },
+        {
+          "name": "user_profile.json",
+          "uri": "https://generativelanguage.googleapis.com/v1beta/files/ho9f64dsq1ud",
+          "mime_type": "text/plain"
+        },
+        {
+          "name": "transactions_2025-11.csv",
+          "uri": "https://generativelanguage.googleapis.com/v1beta/files/oe1qy1x8loxz",
+          "mime_type": "text/csv"
+        }
       ],
       "failed": []
     },
-    "44dfe804-3a46-4206-91a9-2685f7d5e003": {
-      "user_name": "Demo User",
-      "store_id": "fileSearchStores/userdemo-user44dfe804-gdj8h8ip45qt",
-      "store_name": "user_Demo User_44dfe804",
+    "5a51c799-7ff2-41c1-81c9-9affc5d72555": {
+      "user_name": "tam8",
+      "store_id": "user_5a51c799",
       "files": [
-        "transactions_2025-11.csv",
-        "goals.json",
-        "budgets.json",
-        "summary_2025-11.md",
-        "user_profile.json"
+        {
+          "name": "user_profile.json",
+          "uri": "https://generativelanguage.googleapis.com/v1beta/files/5vjma9r65iaf",
+          "mime_type": "text/plain"
+        }
       ],
       "failed": []
     }
   },
   "knowledge_store": {
-    "store_id": "fileSearchStores/financeknowledge-6kx9jxdtd6vg",
+    "store_id": "knowledge",
     "files": [
-      "finance_glossary.md",
-      "categories_reference.json",
-      "retrieval_guidelines.md"
+      {
+        "name": "retrieval_guidelines.md",
+        "uri": "https://generativelanguage.googleapis.com/v1beta/files/b8avsrx0v49l",
+        "mime_type": "text/plain"
+      },
+      {
+        "name": "categories_reference.json",
+        "uri": "https://generativelanguage.googleapis.com/v1beta/files/d1ntal4a4f06",
+        "mime_type": "text/plain"
+      },
+      {
+        "name": "finance_glossary.md",
+        "uri": "https://generativelanguage.googleapis.com/v1beta/files/jke726tzf6r6",
+        "mime_type": "text/plain"
+      }
     ],
     "failed": []
   },
   "summary": {
-    "total_stores": 5,
+    "total_users": 4,
     "total_files": 13,
     "failed_files": 0
   }

@@ -73,7 +73,8 @@ class PersonalFinanceChatbot:
         with open(mapping_path, 'r') as f:
             mapping = json.load(f)
         
-        logger.info(f"Loaded mapping: {mapping['summary']['total_stores']} stores")
+        summary = mapping.get('summary', {})
+        logger.info(f"Loaded mapping: {summary.get('total_users', 0)} users, {summary.get('total_files', 0)} files")
         return mapping
     
     def get_user_context(self, user_id: str) -> Optional[UserContext]:
@@ -96,10 +97,25 @@ class PersonalFinanceChatbot:
         # Get current month
         current_month = datetime.now().strftime('%Y-%m')
         
+        # Collect file resources
+        file_resources = []
+        
+        # Add user files
+        if 'files' in user_data:
+            # user_data['files'] is now a list of dicts {name, uri, mime_type}
+            file_resources.extend(user_data['files'])
+            
+        # Add knowledge files
+        if self.store_mapping.get('knowledge_store'):
+            k_store = self.store_mapping['knowledge_store']
+            if 'files' in k_store:
+                file_resources.extend(k_store['files'])
+        
         return UserContext(
             user_id=user_id,
             user_name=user_data['user_name'],
-            store_id=user_data['store_id'],
+            store_id=user_data.get('store_id', ''),
+            file_resources=file_resources,
             active_month=current_month,
             currency='USD',
             language='vi'  # Default to Vietnamese

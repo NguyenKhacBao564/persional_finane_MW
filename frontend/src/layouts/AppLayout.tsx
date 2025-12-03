@@ -35,6 +35,14 @@ export function AppLayout() {
     navigate('/login', { replace: true });
   };
 
+  const activeItem = navItems.reduce((best, item) => {
+    const isMatch = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+    if (isMatch && (!best || item.to.length > best.to.length)) {
+      return item;
+    }
+    return best;
+  }, null as NavItem | null);
+
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
       {/* Sidebar */}
@@ -50,8 +58,7 @@ export function AppLayout() {
         <nav className="flex-1 p-4 space-y-1" role="navigation" aria-label="Main navigation">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.to || 
-                           (item.to !== '/dashboard' && location.pathname.startsWith(item.to));
+            const isActive = activeItem?.to === item.to;
 
             return (
               <Link
@@ -91,10 +98,7 @@ export function AppLayout() {
       <main className="flex-1 overflow-auto">
         <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-8 py-4">
           <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-            {navItems.find((item) => 
-              location.pathname === item.to || 
-              (item.to !== '/dashboard' && location.pathname.startsWith(item.to))
-            )?.label || 'Personal Finance'}
+            {activeItem?.label || 'Personal Finance'}
           </h2>
         </div>
         <div className="p-8">

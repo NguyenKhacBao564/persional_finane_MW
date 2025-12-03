@@ -1,6 +1,5 @@
-// Settings feature: budgets, goals, notification preferences, linked accounts.
-function SettingsFeature() {
-  return <div className="p-8">Settings placeholder.</div>;
-}
+import Settings from '@/pages/Settings';
 
-export default SettingsFeature;
+export default function SettingsFeature() {
+  return <Settings />;
+}

@@ -1,24 +1,56 @@
 import { useQuery } from '@tanstack/react-query';
-import { format } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subDays } from 'date-fns';
 import { AlertCircle, AlertTriangle, CheckCircle } from 'lucide-react';
 import { getBudgetSummary } from '@/api/budgets';
+import { fetchSpendingByCategory, fetchTrends } from '@/api/insights';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/ui/card';
 import { Progress } from '@/ui/progress';
 import { formatCurrency } from '@/lib/formatters';
+import { SpendingPieChart } from '@/features/dashboard/components/SpendingPieChart';
+import { CashFlowBarChart } from '@/features/dashboard/components/CashFlowBarChart';
 
 function Dashboard() {
-  const currentMonth = format(new Date(), 'yyyy-MM');
+  const today = new Date();
+  const currentMonth = format(today, 'yyyy-MM');
+  
+  // Calculate date range for trends (e.g., last 30 days)
+  const fromDate = format(subDays(today, 30), 'yyyy-MM-dd');
+  const toDate = format(today, 'yyyy-MM-dd');
+  
+  const startOfMonthDate = format(startOfMonth(today), 'yyyy-MM-dd');
+  const endOfMonthDate = format(endOfMonth(today), 'yyyy-MM-dd');
 
-  const { data, isLoading } = useQuery({
+  const { data: budgetData, isLoading: isBudgetLoading } = useQuery({
     queryKey: ['budgets', 'summary', currentMonth],
     queryFn: () => getBudgetSummary(currentMonth),
     staleTime: 5 * 60 * 1000,
   });
 
-  const alertItems = data?.items.filter((item) => item.percent >= 0.8) || [];
+  const { data: spendingData, isLoading: isSpendingLoading } = useQuery({
+    queryKey: ['insights', 'spending', currentMonth],
+    queryFn: () => fetchSpendingByCategory({ from: startOfMonthDate, to: endOfMonthDate }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: trendsData, isLoading: isTrendsLoading } = useQuery({
+    queryKey: ['insights', 'trends', fromDate, toDate],
+    queryFn: () => fetchTrends({ from: fromDate, to: toDate, groupBy: 'day' }),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const alertItems = budgetData?.items.filter((item) => item.percent >= 0.8) || [];
 
   return (
     <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
+        <div className="col-span-4">
+          <CashFlowBarChart data={trendsData?.items} isLoading={isTrendsLoading} />
+        </div>
+        <div className="col-span-3">
+          <SpendingPieChart data={spendingData?.items} isLoading={isSpendingLoading} />
+        </div>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Budget Alerts</CardTitle>
@@ -27,7 +59,7 @@ function Dashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
+          {isBudgetLoading ? (
             <p className="text-sm text-muted-foreground">Loading...</p>
           ) : alertItems.length === 0 ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

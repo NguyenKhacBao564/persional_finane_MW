@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
-import type { RegisterInput, LoginInput } from './validation';
+import type { RegisterInput, LoginInput, ChangePasswordInput } from './validation';
 
 const SALT_ROUNDS = 10;
 
@@ -145,4 +145,31 @@ export async function refreshAccessToken(refreshToken: string) {
     accessToken: newAccessToken,
     refreshToken: newRefreshToken,
   };
+}
+
+export async function changePassword(userId: string, input: ChangePasswordInput) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new Error('User not found');
+  }
+
+  // Verify current password
+  const isValid = await verifyPassword(input.currentPassword, user.passwordHash);
+  if (!isValid) {
+    throw new Error('Incorrect current password');
+  }
+
+  // Hash new password
+  const newPasswordHash = await hashPassword(input.newPassword);
+
+  // Update user
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: newPasswordHash },
+  });
+
+  return { success: true };
 }
