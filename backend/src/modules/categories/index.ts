@@ -49,7 +49,7 @@ router.get(
 
 const categoryBodySchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  type: z.enum(['INCOME', 'EXPENSE', 'TRANSFER']),
+  type: z.enum(['INCOME', 'EXPENSE']), // <-- Xóa 'TRANSFER'
 });
 
 // POST /api/categories - Create new category
