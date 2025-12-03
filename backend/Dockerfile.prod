@@ -1,10 +1,45 @@
+# Stage 1: Build (Cần devDependencies để build TypeScript)
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Copy package.json trước để tận dụng cache
+COPY package.json ./
+
+# Cài đặt TOÀN BỘ dependencies (bao gồm cả devDependencies như typescript, @types/...)
+# Lưu ý: Không dùng --production ở đây
+RUN npm install
+
+# Copy source code
+COPY . .
+
+# Generate Prisma Client (cần thiết để build code có dùng prisma)
+RUN npx prisma generate
+
+# Build TypeScript -> JavaScript (ra thư mục dist)
+RUN npm run build
+
+# --------------------------------------------------------
+
+# Stage 2: Production (Chỉ cần dependencies để chạy, không cần bộ build)
 FROM node:20-alpine
 WORKDIR /app
+
+# Cài đặt các thư viện hệ thống cần thiết cho Prisma (nếu dùng alpine)
+RUN apk add --no-cache openssl
+
+# Copy package.json lại
 COPY package.json ./
+
+# Chỉ cài dependencies cần thiết cho Production (bỏ qua typescript, @types, etc -> Nhẹ hơn)
 RUN npm install --production
-COPY . .
-# Build TypeScript
-RUN npm run build
+
+# Copy folder 'dist' đã build từ Stage 1
+COPY --from=builder /app/dist ./dist
+# Copy folder 'prisma' để chạy migration lúc khởi động
+COPY --from=builder /app/prisma ./prisma
+
 EXPOSE 4000
-# Chạy file đã build
-CMD ["npm", "start"]
+
+# Chạy migration deploy trước khi start server
+# Lưu ý: Start file JS trong dist, không phải ts-node
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
