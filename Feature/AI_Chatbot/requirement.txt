@@ -1,17 +1,9 @@
-# Core AWS and SageMaker dependencies
-boto3==1.34.144
-botocore==1.34.144
-sagemaker==2.231.0
-
 # Data processing and analysis
 pandas>=2.1.0
 numpy>=1.26.0
 
 # Environment and configuration
 python-dotenv==1.0.1
-
-# Vector databases and search
-pinecone==5.3.1
 
 # Cloud storage and databases
 firebase-admin==6.0.1

@@ -1,8 +1,9 @@
 {
   "user_stores": {
-    "44dfe804-3a46-4206-91a9-2685f7d5e003": {
-      "user_name": "Demo User",
-      "store_id": "user_44dfe804",
+    "5a51c799-7ff2-41c1-81c9-9affc5d72555": {
+      "user_name": "tam8",
+      "store_id": "fileSearchStores/usertam85a51c799-mvlmy35l8a9y",
+      "store_name": "user_tam8_5a51c799",
       "files": [
         {
           "name": "goals.json",
@@ -34,7 +35,8 @@
     },
     "d3067b3c-bc85-474f-bc49-03396f5e340d": {
       "user_name": "Test User",
-      "store_id": "user_d3067b3c",
+      "store_id": "fileSearchStores/usertest-userd3067b3c-uiyflb1k6aq5",
+      "store_name": "user_Test User_d3067b3c",
       "files": [
         {
           "name": "user_profile.json",
@@ -46,7 +48,8 @@
     },
     "4b000d62-7fa5-418d-8dc1-f6e98795ebbd": {
       "user_name": "tam4",
-      "store_id": "user_4b000d62",
+      "store_id": "fileSearchStores/usertam44b000d62-rgsjexk8g2sw",
+      "store_name": "user_tam4_4b000d62",
       "files": [
         {
           "name": "summary_2025-11.md",
@@ -66,9 +69,10 @@
       ],
       "failed": []
     },
-    "5a51c799-7ff2-41c1-81c9-9affc5d72555": {
-      "user_name": "tam8",
-      "store_id": "user_5a51c799",
+    "44dfe804-3a46-4206-91a9-2685f7d5e003": {
+      "user_name": "Demo User",
+      "store_id": "fileSearchStores/userdemo-user44dfe804-bltl8xky8899",
+      "store_name": "user_Demo User_44dfe804",
       "files": [
         {
           "name": "user_profile.json",
@@ -80,7 +84,7 @@
     }
   },
   "knowledge_store": {
-    "store_id": "knowledge",
+    "store_id": "fileSearchStores/financeknowledge-yheyg0dzbdqh",
     "files": [
       {
         "name": "retrieval_guidelines.md",
