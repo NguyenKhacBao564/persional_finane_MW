@@ -1,17 +1,17 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authGuard } from '../auth/middleware';
-import { asyncHandler, AppError } from '../../middleware/errorHandler';
+import { authGuard } from '../auth/middleware.js';
+import { asyncHandler, AppError } from '../../middleware/errorHandler.js';
 import multer from 'multer';
 import Papa from 'papaparse';
-import logger from '../../lib/logger';
-import { parseAmountNumber, parseDateString } from '../../lib/parseAmountNumber';
+import logger from '../../lib/logger.js';
+import { parseAmountNumber, parseDateString } from '../../lib/parseAmountNumber.js';
 import {
   previewRequestSchema,
   commitRequestSchema,
   type ColumnMapping,
   type ImportOptions,
-} from './validation';
+} from './validation.js';
 
 const router = Router();
 const prisma = new PrismaClient();

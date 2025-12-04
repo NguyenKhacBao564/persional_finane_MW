@@ -1,11 +1,11 @@
 // FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import express from 'express';
 import cors from 'cors';
-import { env } from './config/env';
-import { prisma } from './config/prisma';
-import apiRouter from './routes';
-import { errorHandler } from './middleware/errorHandler';
-import logger from './lib/logger';
+import { env } from './config/env.js';
+import { prisma } from './config/prisma.js';
+import apiRouter from './routes/index.js';
+import { errorHandler } from './middleware/errorHandler.js';
+import logger from './lib/logger.js';
 
 // Factory for Express app to keep testing/composability simple.
 export function createServer() {

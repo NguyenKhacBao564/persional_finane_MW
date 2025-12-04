@@ -1,7 +1,7 @@
 // FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import type { Request, Response, NextFunction } from 'express';
-import { verifyToken } from './service';
-import { prisma } from '../../config/prisma';
+import { verifyToken } from './service.js';
+import { prisma } from '../../config/prisma.js';
 
 // Extend Express Request type to include user
 declare global {

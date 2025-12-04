@@ -1,7 +1,7 @@
 // FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import { createServer } from './server.js';
-import { env } from './config/env';
-import { prisma } from './config/prisma';
+import { env } from './config/env.js';
+import { prisma } from './config/prisma.js';
 
 const app = createServer();
 const port = env.PORT;

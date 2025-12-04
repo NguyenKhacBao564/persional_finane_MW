@@ -1,8 +1,8 @@
 // FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import request from 'supertest';
-import { createServer } from '../../../server';
-import { prisma } from '../../../config/prisma';
+import { createServer } from '../../../server.js';
+import { prisma } from '../../../config/prisma.js';
 import type { Express } from 'express';
 
 describe('Auth API Integration Tests', () => {

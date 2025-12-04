@@ -1,16 +1,16 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient, Prisma } from '@prisma/client';
-import { authGuard } from '../auth/middleware';
-import { asyncHandler, AppError } from '../../middleware/errorHandler';
+import { authGuard } from '../auth/middleware.js';
+import { asyncHandler, AppError } from '../../middleware/errorHandler.js';
 import {
   createTransactionSchema,
   updateTransactionSchema,
   transactionFiltersSchema,
   type TransactionFilters,
-} from './validation';
+} from './validation.js';
 import multer from 'multer';
 import Papa from 'papaparse';
-import logger from '../../lib/logger';
+import logger from '../../lib/logger.js';
 
 const router = Router();
 const prisma = new PrismaClient();

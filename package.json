@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "fix-esm-import-path": "^1.10.3"
+  }
+}

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient, CategoryType } from '@prisma/client';
-import { authGuard } from '../auth/middleware';
-import { asyncHandler, AppError } from '../../middleware/errorHandler';
+import { authGuard } from '../auth/middleware.js';
+import { asyncHandler, AppError } from '../../middleware/errorHandler.js';
 import { z } from 'zod';
 
 const router = Router();

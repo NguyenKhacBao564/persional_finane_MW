@@ -1,5 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import * as authService from '../service';
+import * as authService from '../service.js';
 
 describe('Auth Service - Unit Tests', () => {
 

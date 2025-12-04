@@ -1,13 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { authGuard } from '../auth/middleware';
-import { asyncHandler, AppError } from '../../middleware/errorHandler';
+import { authGuard } from '../auth/middleware.js';
+import { asyncHandler, AppError } from '../../middleware/errorHandler.js';
 import {
   budgetCreateSchema,
   listQuerySchema,
   summaryQuerySchema,
   updateBudgetSchema,
-} from './validation';
+} from './validation.js';
 
 const router = Router();
 const prisma = new PrismaClient();

@@ -1,9 +1,9 @@
 // FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../../config/prisma';
-import { env } from '../../config/env';
-import type { RegisterInput, LoginInput, ChangePasswordInput } from './validation';
+import { prisma } from '../../config/prisma.js';
+import { env } from '../../config/env.js';
+import type { RegisterInput, LoginInput, ChangePasswordInput } from './validation.js';
 
 const SALT_ROUNDS = 10;
 

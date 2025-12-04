@@ -2,9 +2,9 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { ZodError } from 'zod';
-import { registerSchema, loginSchema, refreshTokenSchema, changePasswordSchema } from './validation';
-import * as authService from './service';
-import { authGuard, optionalAuth } from './middleware';
+import { registerSchema, loginSchema, refreshTokenSchema, changePasswordSchema } from './validation.js';
+import * as authService from './service.js';
+import { authGuard, optionalAuth } from './middleware.js';
 
 // Auth module handles registration, login, password reset, token refresh flows.
 const router = Router();

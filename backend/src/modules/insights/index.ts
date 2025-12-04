@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import { authGuard } from '../auth/middleware';
-import { asyncHandler, AppError } from '../../middleware/errorHandler';
+import { authGuard } from '../auth/middleware.js';
+import { asyncHandler, AppError } from '../../middleware/errorHandler.js';
 
 const router = Router();
 const prisma = new PrismaClient();

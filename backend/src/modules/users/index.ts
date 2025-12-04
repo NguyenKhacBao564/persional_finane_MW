@@ -2,8 +2,8 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { z, ZodError } from 'zod';
-import { prisma } from '../../config/prisma';
-import authModule from '../auth';
+import { prisma } from '../../config/prisma.js';
+import authModule from '../auth/index.js';
 
 // Users module manages profiles, preferences, and linked financial accounts metadata.
 const router = Router();

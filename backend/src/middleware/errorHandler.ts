@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from 'express';
 import { ZodError } from 'zod';
 import { Prisma } from '@prisma/client';
-import logger from '../lib/logger';
+import logger from '../lib/logger.js';
 
 /**
  * Standard API error response shape
