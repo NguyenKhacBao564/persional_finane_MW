@@ -38,6 +38,9 @@ COPY --from=builder /app/dist ./dist
 # Copy folder 'prisma' để chạy migration lúc khởi động
 COPY --from=builder /app/prisma ./prisma
 
+# Generate Prisma Client for production
+RUN npx prisma generate
+
 EXPOSE 4000
 
 # Chạy migration deploy trước khi start server
