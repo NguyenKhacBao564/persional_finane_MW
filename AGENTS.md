@@ -25,4 +25,6 @@
 ## Commit & Pull Request Guidelines
 - Use concise, imperative commits such as `feat(auth): add MFA enrollment`. Group related changes; avoid multi-feature dumps.
 - PRs should include a purpose summary, test commands run, database migration notes, and screenshots for UI changes. Link issues with `Closes #id` where applicable.
-- Ensure build and test commands above pass before requesting review, and surface any deferred work instead of leaving TODOs.
+- Ensure build and test commands above pass before requesting review, and surface any deferred work
+ instead of leaving TODOs.
+test
