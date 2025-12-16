@@ -1,11 +1,15 @@
+// FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import { Router } from 'express';
-import authModule from '../modules/auth';
-import usersModule from '../modules/users';
-import transactionsModule from '../modules/transactions';
-import categoriesModule from '../modules/categories';
-import budgetsModule from '../modules/budgets';
-import goalsModule from '../modules/goals';
-import aiModule from '../modules/ai';
+import authModule from '../modules/auth/index.js';
+import usersModule from '../modules/users/index.js';
+import transactionsModule from '../modules/transactions/index.js';
+import categoriesModule from '../modules/categories/index.js';
+import budgetsModule from '../modules/budgets/index.js';
+import goalsModule from '../modules/goals/index.js';
+import aiModule from '../modules/ai/index.js';
+import suggestionsModule from '../modules/suggestions/index.js';
+import insightsModule from '../modules/insights/index.js';
+import importsModule from '../modules/imports/index.js';
 
 // Aggregates module routers. Each module exposes its own router + handlers.
 const router = Router();
@@ -17,6 +21,9 @@ router.use('/categories', categoriesModule.router);
 router.use('/budgets', budgetsModule.router);
 router.use('/goals', goalsModule.router);
 router.use('/ai', aiModule.router);
+router.use('/suggestions', suggestionsModule.router);
+router.use('/insights', insightsModule.router);
+router.use('/imports', importsModule.router);
 
 export default router;
 

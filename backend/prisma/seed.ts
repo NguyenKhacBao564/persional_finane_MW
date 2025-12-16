@@ -34,86 +34,103 @@ async function main() {
 
   // Create categories
   console.log('Creating categories...');
-  const categories = [
-    { name: 'Food & Dining', type: 'EXPENSE' },
-    { name: 'Transportation', type: 'EXPENSE' },
-    { name: 'Shopping', type: 'EXPENSE' },
-    { name: 'Entertainment', type: 'EXPENSE' },
-    { name: 'Salary', type: 'INCOME' },
-    { name: 'Freelance', type: 'INCOME' },
-    { name: 'Transfer', type: 'TRANSFER' },
+  const categories: Array<{ id: string; name: string; type: 'INCOME' | 'EXPENSE'; color: string }> = [
+    { id: 'cat_food', name: 'Food & Dining', type: 'EXPENSE', color: '#F97316' },
+    { id: 'cat_transport', name: 'Transport', type: 'EXPENSE', color: '#3B82F6' },
+    { id: 'cat_shopping', name: 'Shopping', type: 'EXPENSE', color: '#EC4899' },
+    { id: 'cat_bills', name: 'Bills', type: 'EXPENSE', color: '#8B5CF6' },
+    { id: 'cat_salary', name: 'Salary', type: 'INCOME', color: '#10B981' },
+    { id: 'cat_other', name: 'Other', type: 'EXPENSE', color: '#6B7280' },
   ];
 
   for (const cat of categories) {
-    const existing = await prisma.category.findFirst({
-      where: { name: cat.name },
+    await prisma.category.upsert({
+      where: { id: cat.id },
+      update: { name: cat.name, color: cat.color },
+      create: cat,
     });
-
-    if (!existing) {
-      await prisma.category.create({
-        data: cat as any,
-      });
-    }
   }
 
   console.log('✓ Categories created');
 
-  // Create sample transactions for user1
-  console.log('Creating sample transactions...');
-  const foodCategory = await prisma.category.findFirst({
-    where: { name: 'Food & Dining' },
-  });
-  const salaryCategory = await prisma.category.findFirst({
-    where: { name: 'Salary' },
-  });
+  // Create accounts
+  console.log('Creating accounts...');
+  const accounts = [
+    { id: 'acc_cash', name: 'Cash', currency: 'VND' },
+    { id: 'acc_bank', name: 'Bank Account', currency: 'VND' },
+    { id: 'acc_card', name: 'Credit Card', currency: 'VND' },
+  ];
 
-  if (foodCategory && salaryCategory) {
-    await prisma.transaction.createMany({
-      data: [
-        {
-          userId: user1.id,
-          categoryId: foodCategory.id,
-          amount: 25.50,
-          description: 'Lunch at restaurant',
-          occurredAt: new Date('2025-11-01'),
-          currency: 'USD',
-        },
-        {
-          userId: user1.id,
-          categoryId: foodCategory.id,
-          amount: 45.00,
-          description: 'Grocery shopping',
-          occurredAt: new Date('2025-11-03'),
-          currency: 'USD',
-        },
-        {
-          userId: user1.id,
-          categoryId: salaryCategory.id,
-          amount: 3000.00,
-          description: 'Monthly salary',
-          occurredAt: new Date('2025-11-01'),
-          currency: 'USD',
-        },
-      ],
+  for (const acc of accounts) {
+    await prisma.account.upsert({
+      where: { id: acc.id },
+      update: {},
+      create: acc,
     });
   }
+
+  console.log('✓ Accounts created');
+
+  // Create sample transactions for user1
+  console.log('Creating sample transactions...');
+  await prisma.transaction.createMany({
+    data: [
+      {
+        userId: user1.id,
+        accountId: 'acc_cash',
+        categoryId: 'cat_food',
+        type: 'OUT',
+        amount: 25000,
+        note: 'Lunch at restaurant',
+        occurredAt: new Date('2025-11-01'),
+        currency: 'VND',
+      },
+      {
+        userId: user1.id,
+        accountId: 'acc_bank',
+        categoryId: 'cat_food',
+        type: 'OUT',
+        amount: 450000,
+        note: 'Grocery shopping',
+        occurredAt: new Date('2025-11-03'),
+        currency: 'VND',
+      },
+      {
+        userId: user1.id,
+        accountId: 'acc_bank',
+        categoryId: 'cat_salary',
+        type: 'IN',
+        amount: 30000000,
+        note: 'Monthly salary',
+        occurredAt: new Date('2025-11-01'),
+        currency: 'VND',
+      },
+    ],
+  });
 
   console.log('✓ Sample transactions created');
 
-  // Create sample budget
-  console.log('Creating sample budget...');
-  if (foodCategory) {
-    await prisma.budget.create({
-      data: {
+  // Create sample budgets
+  console.log('Creating sample budgets...');
+  const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+  await prisma.budget.createMany({
+    data: [
+      {
         userId: user1.id,
-        categoryId: foodCategory.id,
-        amount: 500.00,
-        period: 'MONTHLY',
+        categoryId: 'cat_food',
+        month: currentMonth,
+        limit: 5000000,
       },
-    });
-  }
+      {
+        userId: user1.id,
+        categoryId: 'cat_transport',
+        month: currentMonth,
+        limit: 2000000,
+      },
+    ],
+  });
 
-  console.log('✓ Sample budget created');
+  console.log('✓ Sample budgets created');
 
   // Create sample goal
   console.log('Creating sample goal...');
@@ -137,7 +154,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error('Seed failed:', e);
     process.exit(1);
   })
   .finally(async () => {

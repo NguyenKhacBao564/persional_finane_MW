@@ -7,54 +7,99 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Status {
+  ACTIVE
+  SUSPENDED
+}
+
 model User {
   id           String        @id @default(uuid())
   email        String        @unique
   passwordHash String
   name         String?
+  role         Role          @default(USER)
+  status       Status        @default(ACTIVE)
   transactions Transaction[]
   budgets      Budget[]
   goals        Goal[]
   insights     AIInsight[]
+  accounts     Account[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
 
 model Category {
-  id           String        @id @default(uuid())
-  name         String
-  type         CategoryType
+  id          String        @id @default(cuid()) 
+  name        String
+  type        CategoryType
+  color       String?       // Added in migration 20251108134107_add_category_color
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
   transactions Transaction[]
   budgets      Budget[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+
+  @@index([type])
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+model Account {
+  id        String         @id
+  name      String
+  currency  String
+  userId    String?
+  user      User?          @relation(fields: [userId], references: [id])
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  transactions Transaction[]
 }
 
 model Transaction {
-  id          String      @id @default(uuid())
-  user        User        @relation(fields: [userId], references: [id])
+  id          String          @id @default(cuid())
   userId      String
-  category    Category?   @relation(fields: [categoryId], references: [id])
+  accountId   String
   categoryId  String?
-  amount      Decimal      @db.Decimal(14, 2)
-  currency    String       @default("USD")
-  description String?
+  type        TransactionType @default(OUT)
+  amount      Decimal         @db.Decimal(14, 2)
   occurredAt  DateTime
+  note        String?         @map("description")
+  currency    String          @default("USD")
+  user        User            @relation(fields: [userId], references: [id])
+  account     Account         @relation(fields: [accountId], references: [id])
+  category    Category?       @relation(fields: [categoryId], references: [id])
   aiInsights  AIInsight[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([userId, occurredAt])
+  @@index([userId, categoryId])
+  @@index([occurredAt])
 }
 
 model Budget {
-  id          String   @id @default(uuid())
-  user        User     @relation(fields: [userId], references: [id])
+  id          String   @id @default(cuid())
   userId      String
-  category    Category? @relation(fields: [categoryId], references: [id])
-  categoryId  String?
-  amount      Decimal   @db.Decimal(14, 2)
-  period      BudgetPeriod
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  categoryId  String
+  month       String   // YYYY-MM format
+  limit       Decimal  @db.Decimal(14, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@unique([userId, categoryId, month], name: "userId_categoryId_month")
+  @@index([userId, month])
 }
 
 model Goal {
@@ -80,14 +125,7 @@ model AIInsight {
   createdAt            DateTime     @default(now())
 }
 
-enum CategoryType {
-  INCOME
-  EXPENSE
-  TRANSFER
-}
-
-enum BudgetPeriod {
-  MONTHLY
-  WEEKLY
-  ANNUAL
+enum TransactionType {
+  IN
+  OUT
 }

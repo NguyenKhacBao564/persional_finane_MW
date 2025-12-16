@@ -12,33 +12,31 @@ export type AuthResponse = {
   tokens: Tokens;
 };
 
-export type LoginPayload = {
-  email: string;
-  password: string;
-};
+type RegisterPayload = { email: string; password: string; name?: string };
+type LoginPayload = { email: string; password: string };
 
-export type RegisterPayload = {
-  email: string;
-  password: string;
-  name?: string;
-};
-
-export async function login(payload: LoginPayload): Promise<AuthResponse> {
-  const response = await axiosClient.post<AuthResponse>(
-    '/auth/login',
-    payload
-  );
-
-  return response.data;
+export async function register(payload: RegisterPayload) {
+  const resp = await axiosClient.post('/auth/register', payload);
+  // BE now returns { success, data: { user, tokens } }
+  const { user, tokens } = resp.data?.data ?? {};
+  if (!tokens?.accessToken || !tokens?.refreshToken) {
+    // normalize server error to FE toast
+    const msg =
+      resp.data?.error?.message ||
+      'Unexpected server response: missing tokens';
+    throw new Error(msg);
+  }
+  return { user, tokens };
 }
 
-export async function register(
-  payload: RegisterPayload
-): Promise<AuthResponse> {
-  const response = await axiosClient.post<AuthResponse>(
-    '/auth/register',
-    payload
-  );
-
-  return response.data;
+export async function login(payload: LoginPayload) {
+  const resp = await axiosClient.post('/auth/login', payload);
+  const { user, tokens } = resp.data?.data ?? {};
+  if (!tokens?.accessToken || !tokens?.refreshToken) {
+    const msg =
+      resp.data?.error?.message ||
+      'Unexpected server response: missing tokens';
+    throw new Error(msg);
+  }
+  return { user, tokens };
 }

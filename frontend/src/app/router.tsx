@@ -1,6 +1,5 @@
 import {
   Navigate,
-  Outlet,
   RouteObject,
   RouterProvider,
   createBrowserRouter,
@@ -9,19 +8,76 @@ import AuthLayout from '@/components/auth/AuthLayout';
 import AuthLogin from '@/pages/AuthLogin';
 import AuthRegister from '@/pages/AuthRegister';
 import Dashboard from '@/pages/Dashboard';
+import Transactions from '@/pages/Transactions';
+import BudgetsPage from '@/pages/BudgetsPage';
+import BudgetForm from '@/pages/BudgetForm';
+import SavingGoalForm from '@/pages/SavingGoalForm';
+import ImportCsv from '@/pages/ImportCsv';
+import NotFound from '@/pages/NotFound';
+import Settings from '@/pages/Settings';
+import AppErrorBoundary from '@/pages/AppErrorBoundary';
+import { ProtectedRoute } from './ProtectedRoute';
+import { AppLayout } from '@/layouts/AppLayout';
+import { hasValidTokens } from '@/lib/tokens';
+
+function RootRedirect() {
+  const isAuthenticated = hasValidTokens();
+  return <Navigate to={isAuthenticated ? '/dashboard' : '/login'} replace />;
+}
 
 const routes: RouteObject[] = [
   {
-    element: <Outlet />,
+    path: '/',
+    errorElement: <AppErrorBoundary />,
     children: [
       {
         index: true,
-        element: <Navigate to="/login" replace />,
+        element: <RootRedirect />,
       },
+      // Protected routes (require authentication)
       {
-        path: '/dashboard',
-        element: <Dashboard />,
+        element: <ProtectedRoute />,
+        children: [
+          {
+            element: <AppLayout />,
+            children: [
+              {
+                path: '/dashboard',
+                element: <Dashboard />,
+              },
+              {
+                path: '/transactions',
+                element: <Transactions />,
+              },
+              {
+                path: '/transactions/import',
+                element: <ImportCsv />,
+              },
+              {
+                path: '/budgets',
+                element: <BudgetsPage />,
+              },
+              {
+                path: '/budgets/new',
+                element: <BudgetForm />,
+              },
+              {
+                path: '/budgets/:id/edit',
+                element: <BudgetForm />,
+              },
+              {
+                path: '/goals/new',
+                element: <SavingGoalForm />,
+              },
+              {
+                path: '/settings',
+                element: <Settings />,
+              },
+            ],
+          },
+        ],
       },
+      // Public routes (auth pages)
       {
         element: <AuthLayout />,
         children: [
@@ -35,9 +91,10 @@ const routes: RouteObject[] = [
           },
         ],
       },
+      // 404 fallback
       {
         path: '*',
-        element: <Navigate to="/login" replace />,
+        element: <NotFound />,
       },
     ],
   },

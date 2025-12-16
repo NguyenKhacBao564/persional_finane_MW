@@ -1,7 +1,8 @@
+// FE CONTRACT NOTE: Updated to align with frontend expectations ({ success, data: { user, tokens } }) and E1 specs; avoids FE parsing mismatches.
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
 import request from 'supertest';
-import { createServer } from '../../../server';
-import { prisma } from '../../../config/prisma';
+import { createServer } from '../../../server.js';
+import { prisma } from '../../../config/prisma.js';
 import type { Express } from 'express';
 
 describe('Auth API Integration Tests', () => {
@@ -43,8 +44,10 @@ describe('Auth API Integration Tests', () => {
       expect(response.body.data.user).toBeDefined();
       expect(response.body.data.user.email).toBe(userData.email);
       expect(response.body.data.user.name).toBe(userData.name);
-      expect(response.body.data.accessToken).toBeDefined();
-      expect(response.body.data.refreshToken).toBeDefined();
+      expect(response.body.data.user.role).toBe('USER');
+      expect(response.body.data.user.status).toBe('ACTIVE');
+      expect(response.body.data.tokens.accessToken).toBeDefined();
+      expect(response.body.data.tokens.refreshToken).toBeDefined();
 
       // Verify user was created in database
       const user = await prisma.user.findUnique({
@@ -68,10 +71,10 @@ describe('Auth API Integration Tests', () => {
       const response = await request(app)
         .post('/api/auth/register')
         .send(userData)
-        .expect(400);
+        .expect(409);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('already exists');
+      expect(response.body.error.message).toContain('already exists');
     });
 
     it('should validate email format', async () => {
@@ -103,7 +106,8 @@ describe('Auth API Integration Tests', () => {
         .expect(400);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBeDefined();
+      expect(response.body.error.message).toBeDefined();
+      expect(response.body.error.code).toBe('VALIDATION_ERROR');
     });
 
     it('should register user without name (optional field)', async () => {
@@ -120,6 +124,8 @@ describe('Auth API Integration Tests', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.user.email).toBe(userData.email);
       expect(response.body.data.user.name).toBeNull();
+      expect(response.body.data.user.role).toBe('USER');
+      expect(response.body.data.user.status).toBe('ACTIVE');
     });
   });
 
@@ -146,8 +152,10 @@ describe('Auth API Integration Tests', () => {
 
       expect(response.body.success).toBe(true);
       expect(response.body.data.user.email).toBe(testUser.email);
-      expect(response.body.data.accessToken).toBeDefined();
-      expect(response.body.data.refreshToken).toBeDefined();
+      expect(response.body.data.user.role).toBe('USER');
+      expect(response.body.data.user.status).toBe('ACTIVE');
+      expect(response.body.data.tokens.accessToken).toBeDefined();
+      expect(response.body.data.tokens.refreshToken).toBeDefined();
     });
 
     it('should not login with incorrect password', async () => {
@@ -160,7 +168,7 @@ describe('Auth API Integration Tests', () => {
         .expect(401);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Invalid email or password');
+      expect(response.body.error.message).toContain('Invalid email or password');
     });
 
     it('should not login with non-existent email', async () => {
@@ -173,7 +181,7 @@ describe('Auth API Integration Tests', () => {
         .expect(401);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Invalid email or password');
+      expect(response.body.error.message).toContain('Invalid email or password');
     });
 
     it('should validate required fields', async () => {
@@ -183,9 +191,10 @@ describe('Auth API Integration Tests', () => {
           email: testUser.email,
           // missing password
         })
-        .expect(401);
+        .expect(400);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('VALIDATION_ERROR');
     });
   });
 
@@ -203,8 +212,8 @@ describe('Auth API Integration Tests', () => {
           name: 'Refresh Test',
         });
 
-      validRefreshToken = response.body.data.refreshToken;
-      accessToken = response.body.data.accessToken;
+      validRefreshToken = response.body.data.tokens.refreshToken;
+      accessToken = response.body.data.tokens.accessToken;
     });
 
     it('should refresh tokens with valid refresh token', async () => {
@@ -216,11 +225,11 @@ describe('Auth API Integration Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(response.body.data.accessToken).toBeDefined();
-      expect(response.body.data.refreshToken).toBeDefined();
+      expect(response.body.data.tokens.accessToken).toBeDefined();
+      expect(response.body.data.tokens.refreshToken).toBeDefined();
       // Verify new tokens are valid (may be same if created in same second)
-      expect(typeof response.body.data.accessToken).toBe('string');
-      expect(typeof response.body.data.refreshToken).toBe('string');
+      expect(typeof response.body.data.tokens.accessToken).toBe('string');
+      expect(typeof response.body.data.tokens.refreshToken).toBe('string');
     });
 
     it('should not refresh with access token', async () => {
@@ -232,7 +241,7 @@ describe('Auth API Integration Tests', () => {
         .expect(401);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Invalid token type');
+      expect(response.body.error.message).toContain('Invalid token type');
     });
 
     it('should not refresh with invalid token', async () => {
@@ -244,16 +253,17 @@ describe('Auth API Integration Tests', () => {
         .expect(401);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBeDefined();
+      expect(response.body.error.message).toBeDefined();
     });
 
     it('should validate required fields', async () => {
       const response = await request(app)
         .post('/api/auth/refresh')
         .send({})
-        .expect(401);
+        .expect(400);
 
       expect(response.body.success).toBe(false);
+      expect(response.body.error.code).toBe('VALIDATION_ERROR');
     });
   });
 
@@ -270,7 +280,7 @@ describe('Auth API Integration Tests', () => {
           name: 'Protected Test',
         });
 
-      accessToken = response.body.data.accessToken;
+      accessToken = response.body.data.tokens.accessToken;
     });
 
     it('should access protected route with valid token', async () => {
@@ -282,13 +292,15 @@ describe('Auth API Integration Tests', () => {
       expect(response.body.success).toBe(true);
       expect(response.body.data.user).toBeDefined();
       expect(response.body.data.user.email).toBe('protected@test.com');
+      expect(response.body.data.user.role).toBe('USER');
+      expect(response.body.data.user.status).toBe('ACTIVE');
     });
 
     it('should not access protected route without token', async () => {
       const response = await request(app).get('/api/users/me').expect(401);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Authorization token required');
+      expect(response.body.error.message).toContain('Authorization token required');
     });
 
     it('should not access protected route with invalid token', async () => {
@@ -298,7 +310,7 @@ describe('Auth API Integration Tests', () => {
         .expect(401);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toBeDefined();
+      expect(response.body.error.message).toBeDefined();
     });
 
     it('should not access protected route with malformed authorization header', async () => {
@@ -308,7 +320,21 @@ describe('Auth API Integration Tests', () => {
         .expect(401);
 
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Authorization token required');
+      expect(response.body.error.message).toContain('Authorization token required');
+    });
+  });
+
+  describe('Health Endpoints', () => {
+    it('should return ok for /health', async () => {
+      const response = await request(app).get('/health').expect(200);
+
+      expect(response.body.status).toBe('ok');
+    });
+
+    it('should return ok for /health/db when database is connected', async () => {
+      const response = await request(app).get('/health/db').expect(200);
+
+      expect(response.body.status).toBe('ok');
     });
   });
 });

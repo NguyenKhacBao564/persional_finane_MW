@@ -1,13 +1,10 @@
-# Backend container for Express + Prisma API server.
-FROM node:20-slim AS base
+FROM node:20-alpine
 WORKDIR /app
-
-# Install dependencies first to leverage Docker layer caching.
-COPY package.json package-lock.json* pnpm-lock.yaml* yarn.lock* ./
-RUN npm install || true
-
-# Copy source code after dependencies are cached.
+COPY package.json ./
+RUN npm install --production
 COPY . .
-
+# Build TypeScript
+RUN npm run build
 EXPOSE 4000
-CMD ["npm", "run", "dev"]
+# Chạy file đã build
+CMD ["npm", "start"]

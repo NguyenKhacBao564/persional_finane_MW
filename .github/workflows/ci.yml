@@ -1,51 +1,71 @@
-name: ci
+name: CI/CD Pipeline
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-
+    branches: [ "main" ] 
 jobs:
-  frontend:
+  build-and-push:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm install
-      - run: npm run build
+    - uses: actions/checkout@v3
 
-  backend:
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and Push Backend
+      uses: docker/build-push-action@v4
+      with:
+        context: ./backend
+        file: ./backend/Dockerfile.prod
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/finance-backend:latest
+
+    - name: Build and Push Frontend
+      uses: docker/build-push-action@v4
+      with:
+        context: ./frontend
+        file: ./frontend/Dockerfile.prod
+        push: true
+        tags: ${{ secrets.DOCKERHUB_USERNAME }}/finance-frontend:latest
+
+  deploy:
+    needs: build-and-push
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
-    services:
-      postgres:
-        image: postgres:15-alpine
-        env:
-          POSTGRES_USER: finance_user
-          POSTGRES_PASSWORD: super-secure
-          POSTGRES_DB: finance_db
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U finance_user"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm install
-      - run: npx prisma migrate deploy
-      - run: npm run build
+    # 1. Copy file docker-compose.prod.yml lên server
+    - uses: actions/checkout@v3
+    - name: Copy Compose File to Server
+      uses: appleboy/scp-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "docker-compose.prod.yml"
+        target: "finance-project/" # Folder trên server
+    # 2. Thực hiện lệnh Deploy
+    - name: Deploy via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          # Tạo folder nếu chưa có (phòng hờ)
+          mkdir -p ~/finance-project
+          cd ~/finance-project
+          
+          # Login Docker Hub (Optional - để tránh lỗi rate limit hoặc repo private)
+          echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+
+          # Pull image mới nhất
+          # LƯU Ý: Dùng 'docker compose' thay vì 'docker-compose'
+          docker compose -f docker-compose.prod.yml pull
+          
+          # Khởi động container (recreate để cập nhật image mới)
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans
+          
+          # Dọn dẹp image cũ cho đỡ tốn ổ cứng
+          docker image prune -f

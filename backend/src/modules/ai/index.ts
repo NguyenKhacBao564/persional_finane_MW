@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { openaiClient } from '../../services/openaiClient';
+import { openaiClient } from '../../services/openaiClient.js';
 
 // AI module bridges business data with OpenAI for categorization + insights.
 const router = Router();

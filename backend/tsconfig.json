@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "Node",
+    "target": "ES2022",       // Nâng lên bản mới hơn cho tối ưu
+    "module": "NodeNext",     // QUAN TRỌNG: Dùng chuẩn module mới nhất
+    "moduleResolution": "NodeNext",
     "strict": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
