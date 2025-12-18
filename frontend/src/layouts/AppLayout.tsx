@@ -11,6 +11,7 @@ import {
 import { Button } from '@/ui/button';
 import { clearTokens } from '@/lib/tokens';
 import { useNavigate } from 'react-router-dom';
+import { Chatbot } from '@/components/Chatbot';
 
 interface NavItem {
   to: string;
@@ -105,6 +106,9 @@ export function AppLayout() {
           <Outlet />
         </div>
       </main>
+
+      {/* Chatbot */}
+      <Chatbot />
     </div>
   );
 }
