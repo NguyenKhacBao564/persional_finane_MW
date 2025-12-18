@@ -10,6 +10,7 @@ import aiModule from '../modules/ai/index.js';
 import suggestionsModule from '../modules/suggestions/index.js';
 import insightsModule from '../modules/insights/index.js';
 import importsModule from '../modules/imports/index.js';
+import chatbotModule from '../modules/chatbot/index.js';
 
 // Aggregates module routers. Each module exposes its own router + handlers.
 const router = Router();
@@ -24,6 +25,7 @@ router.use('/ai', aiModule.router);
 router.use('/suggestions', suggestionsModule.router);
 router.use('/insights', insightsModule.router);
 router.use('/imports', importsModule.router);
+router.use('/chatbot', chatbotModule.router);
 
 export default router;
 
