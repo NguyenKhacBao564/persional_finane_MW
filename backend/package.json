@@ -54,7 +54,7 @@
     "typescript": "^5.9.3"
   },
   "prisma": {
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts"
   },
   "description": "- `src/modules`: Domain-driven folders (auth, users, transactions, categories, budgets, goals, ai).\r - `src/config`: Shared env/prisma helpers.\r - `src/routes`: Aggregates module routers into the Express app.\r - `prisma/schema.prisma`: Data model for PostgreSQL via Prisma.",
   "keywords": [],

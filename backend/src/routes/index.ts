@@ -11,10 +11,12 @@ import suggestionsModule from '../modules/suggestions/index.js';
 import insightsModule from '../modules/insights/index.js';
 import importsModule from '../modules/imports/index.js';
 import chatbotModule from '../modules/chatbot/index.js';
+import accountsModule from '../modules/accounts/index.js';
 
 // Aggregates module routers. Each module exposes its own router + handlers.
 const router = Router();
 
+router.use('/accounts', accountsModule.router);
 router.use('/auth', authModule.router);
 router.use('/users', usersModule.router);
 router.use('/transactions', transactionsModule.router);

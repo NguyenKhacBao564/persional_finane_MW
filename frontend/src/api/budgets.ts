@@ -9,8 +9,6 @@ import type {
   GoalUpdateInput,
 } from '@/types/budgets';
 
-const useLocal = import.meta.env.VITE_BUDGETS_LOCAL === 'true';
-
 export interface Budget {
   id: string;
   categoryId: string;
@@ -73,25 +71,6 @@ export interface BudgetSummaryResponse {
 export async function fetchBudgetSummary(
   params: BudgetQueryParams
 ): Promise<BudgetSummary> {
-  if (useLocal) {
-    // Lightweight mock for dev only
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    const items = [
-      {
-        budgetId: 'b1',
-        categoryId: 'cat_food',
-        categoryName: 'Food & Dining',
-        period: 'MONTHLY' as const,
-        allocated: 3000000,
-        spent: 1250000,
-        start: params.start,
-        end: params.end,
-      },
-    ];
-    const totals = { allocated: 3000000, spent: 1250000, remaining: 1750000 };
-    return { items, totals };
-  }
-
   const response = await axiosClient.get<{
     success: boolean;
     data?: BudgetSummary;
@@ -111,11 +90,6 @@ export async function fetchBudgetSummary(
 export async function createBudget(
   input: BudgetCreateInput
 ): Promise<{ budgetId: string }> {
-  if (useLocal) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return { budgetId: crypto.randomUUID() };
-  }
-
   const response = await axiosClient.post<{
     success: boolean;
     data?: { budgetId: string };
@@ -133,11 +107,6 @@ export async function createBudget(
  * Update an existing budget
  */
 export async function updateBudget(input: BudgetUpdateInput): Promise<void> {
-  if (useLocal) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return;
-  }
-
   const { budgetId, ...updateData } = input;
   const response = await axiosClient.put<{
     success: boolean;
@@ -153,11 +122,6 @@ export async function updateBudget(input: BudgetUpdateInput): Promise<void> {
  * Delete a budget
  */
 export async function deleteBudget(budgetId: string): Promise<void> {
-  if (useLocal) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return;
-  }
-
   const response = await axiosClient.delete<{
     success: boolean;
     error?: { message?: string };
@@ -254,11 +218,6 @@ export async function getBudgetSummary(month: string): Promise<BudgetSummaryResp
  * Fetch all saving goals
  */
 export async function fetchGoals(): Promise<SavingGoal[]> {
-  if (useLocal) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return [];
-  }
-
   const response = await axiosClient.get<{
     success: boolean;
     data?: { items: SavingGoal[] };
@@ -278,11 +237,6 @@ export async function fetchGoals(): Promise<SavingGoal[]> {
 export async function createGoal(
   input: GoalCreateInput
 ): Promise<{ goalId: string }> {
-  if (useLocal) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return { goalId: crypto.randomUUID() };
-  }
-
   const response = await axiosClient.post<{
     success: boolean;
     data?: { goalId: string };
@@ -300,11 +254,6 @@ export async function createGoal(
  * Update an existing saving goal
  */
 export async function updateGoal(input: GoalUpdateInput): Promise<void> {
-  if (useLocal) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return;
-  }
-
   const { goalId, ...updateData } = input;
   const response = await axiosClient.put<{
     success: boolean;
@@ -320,11 +269,6 @@ export async function updateGoal(input: GoalUpdateInput): Promise<void> {
  * Delete a saving goal
  */
 export async function deleteGoal(goalId: string): Promise<void> {
-  if (useLocal) {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    return;
-  }
-
   const response = await axiosClient.delete<{
     success: boolean;
     error?: { message?: string };

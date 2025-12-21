@@ -1,7 +1,10 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { env } from '../config/env.js';
 
-const genAI = new GoogleGenerativeAI(env.GEMINI_API_KEY || '');
+const API_KEY = env.GEMINI_API_KEY || '';
+const isConfigured = API_KEY.length > 0;
+
+const genAI = isConfigured ? new GoogleGenerativeAI(API_KEY) : null;
 
 const MODELS_TO_TRY = [
   'models/gemini-flash-latest',
@@ -9,7 +12,18 @@ const MODELS_TO_TRY = [
   'models/gemini-2.5-flash',
 ];
 
+/**
+ * Check if Gemini AI is configured
+ */
+export function isGeminiConfigured(): boolean {
+  return isConfigured;
+}
+
 async function generateWithFallback(prompt: string): Promise<string> {
+  if (!genAI) {
+    throw new Error('Gemini AI is not configured. Please set GEMINI_API_KEY environment variable.');
+  }
+
   let lastError: Error | null = null;
 
   for (const modelName of MODELS_TO_TRY) {

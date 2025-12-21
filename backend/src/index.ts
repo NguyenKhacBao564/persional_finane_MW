@@ -2,6 +2,7 @@
 import { createServer } from './server.js';
 import { env } from './config/env.js';
 import { prisma } from './config/prisma.js';
+import { bootstrapDatabase } from './services/bootstrap.js';
 
 const app = createServer();
 const port = env.PORT;
@@ -10,6 +11,9 @@ async function startServer() {
   try {
     await prisma.$connect();
     console.log('[backend] Database connected');
+
+    // Bootstrap required baseline data (categories, accounts)
+    await bootstrapDatabase();
 
     const server = app.listen(port, () => {
       console.log(`[backend] Listening on port ${port}`);

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { Button } from '@/ui/button';
-import { sendChatMessage, getFinancialAdvice, type ChatMessage } from '@/api/chatbot';
+import { sendChatMessage, getFinancialAdvice, getChatbotStatus, type ChatMessage } from '@/api/chatbot';
 import { cn } from '@/lib/utils';
 
 export function Chatbot() {
@@ -9,6 +9,8 @@ export function Chatbot() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+  const [aiStatusMessage, setAiStatusMessage] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -25,6 +27,16 @@ export function Chatbot() {
       inputRef.current.focus();
     }
   }, [isOpen]);
+
+  // Check AI availability when chatbot opens
+  useEffect(() => {
+    if (isOpen && aiAvailable === null) {
+      getChatbotStatus().then((status) => {
+        setAiAvailable(status.available);
+        setAiStatusMessage(status.message);
+      });
+    }
+  }, [isOpen, aiAvailable]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return;
@@ -135,13 +147,26 @@ export function Chatbot() {
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {messages.length === 0 && (
+            {/* AI Not Configured Warning */}
+            {aiAvailable === false && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-center">
+                <AlertCircle className="h-8 w-8 mx-auto mb-2 text-amber-500" />
+                <p className="text-sm text-amber-700 dark:text-amber-300 font-medium">
+                  AI Assistant Not Available
+                </p>
+                <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  {aiStatusMessage || 'The AI chatbot is not configured. Please contact your administrator.'}
+                </p>
+              </div>
+            )}
+
+            {messages.length === 0 && aiAvailable !== false && (
               <div className="text-center text-slate-500 dark:text-slate-400 mt-8">
                 <Sparkles className="h-12 w-12 mx-auto mb-3 text-blue-500" />
                 <p className="text-sm mb-4">Hi! I'm your financial assistant.</p>
                 <Button
                   onClick={handleGetAdvice}
-                  disabled={isLoading}
+                  disabled={isLoading || aiAvailable === false}
                   variant="outline"
                   size="sm"
                   className="gap-2"

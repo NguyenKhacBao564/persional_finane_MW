@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { listBudgets, upsertBudget, updateBudgetLimit, deleteBudgetById } from '@/api/budgets';
+import { fetchCategories, type Category } from '@/api/categories';
 import type { UpdateBudgetLimitInput } from '@/api/budgets';
 import { budgetFormSchema } from '@/schemas/budget';
 import type { BudgetFormOutput } from '@/schemas/budget';
@@ -38,15 +39,6 @@ import {
 } from '@/ui/select';
 import { formatCurrency } from '@/lib/formatters';
 
-const MOCK_CATEGORIES = [
-  { id: 'cat_food', name: 'Food & Dining' },
-  { id: 'cat_transport', name: 'Transport' },
-  { id: 'cat_shopping', name: 'Shopping' },
-  { id: 'cat_bills', name: 'Bills' },
-  { id: 'cat_salary', name: 'Salary' },
-  { id: 'cat_other', name: 'Other' },
-];
-
 function BudgetsPage() {
   const [currentMonth] = useState(() => format(new Date(), 'yyyy-MM'));
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -64,10 +56,18 @@ function BudgetsPage() {
     },
   });
 
-  const { data, isLoading } = useQuery({
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data, isLoading: budgetsLoading } = useQuery({
     queryKey: ['budgets', currentMonth],
     queryFn: () => listBudgets({ month: currentMonth }),
   });
+
+  const isLoading = categoriesLoading || budgetsLoading;
 
   const upsertMutation = useMutation({
     mutationFn: (data: BudgetFormOutput) => upsertBudget(data),
@@ -233,11 +233,25 @@ function BudgetsPage() {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {MOCK_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
+                  {categories.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground">
+                      No categories available
+                    </div>
+                  ) : (
+                    categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        <div className="flex items-center gap-2">
+                          {cat.color && (
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: cat.color }}
+                            />
+                          )}
+                          <span>{cat.name}</span>
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {form.formState.errors.categoryId && (

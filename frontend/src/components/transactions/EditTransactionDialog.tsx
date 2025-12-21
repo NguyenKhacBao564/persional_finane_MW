@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Pencil } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Pencil, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, parseISO, isValid } from 'date-fns';
 import { updateTransaction } from '@/api/transactions';
+import { fetchCategories } from '@/api/categories';
+import { fetchAccounts } from '@/api/accounts';
 import type { Transaction } from '@/types/transactions';
 import type { TransactionCreateInput } from '@/schemas/transaction';
 import {
@@ -16,27 +18,6 @@ import {
 } from '@/ui/dialog';
 import { Button } from '@/ui/button';
 import { TransactionForm } from './TransactionForm';
-
-/**
- * Mock categories for now - replace with actual API call
- */
-const MOCK_CATEGORIES = [
-  { id: 'cat_food', name: 'Food', color: '#F97316' },
-  { id: 'cat_transport', name: 'Transport', color: '#3B82F6' },
-  { id: 'cat_shopping', name: 'Shopping', color: '#EC4899' },
-  { id: 'cat_bills', name: 'Bills', color: '#8B5CF6' },
-  { id: 'cat_salary', name: 'Salary', color: '#10B981' },
-  { id: 'cat_other', name: 'Other', color: '#6B7280' },
-];
-
-/**
- * Mock accounts for now - replace with actual API call
- */
-const MOCK_ACCOUNTS = [
-  { id: 'acc_cash', name: 'Cash' },
-  { id: 'acc_bank', name: 'Bank Account' },
-  { id: 'acc_card', name: 'Credit Card' },
-];
 
 interface EditTransactionDialogProps {
   transaction: Transaction;
@@ -59,6 +40,18 @@ export function EditTransactionDialog({
 }: EditTransactionDialogProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+    queryKey: ['categories'],
+    queryFn: fetchCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: accounts = [], isLoading: accountsLoading } = useQuery({
+    queryKey: ['accounts'],
+    queryFn: fetchAccounts,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const updateMutation = useMutation({
     mutationFn: (values: TransactionCreateInput) =>
@@ -132,6 +125,8 @@ export function EditTransactionDialog({
     note: transaction.note || '',
   };
 
+  const isLoading = categoriesLoading || accountsLoading;
+
   const TriggerButton =
     variant === 'button' ? (
       <Button variant="outline" size="sm">
@@ -155,15 +150,22 @@ export function EditTransactionDialog({
             Update the details of this transaction.
           </DialogDescription>
         </DialogHeader>
-        <TransactionForm
-          mode="edit"
-          defaultValues={defaultValues}
-          onSubmit={handleSubmit}
-          onCancel={handleCancel}
-          isSubmitting={updateMutation.isPending}
-          categories={MOCK_CATEGORIES}
-          accounts={MOCK_ACCOUNTS}
-        />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading...</span>
+          </div>
+        ) : (
+          <TransactionForm
+            mode="edit"
+            defaultValues={defaultValues}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            isSubmitting={updateMutation.isPending}
+            categories={categories}
+            accounts={accounts}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );
