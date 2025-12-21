@@ -33,7 +33,8 @@ class GeminiFileSearchManager:
     
     def __init__(self, api_key: Optional[str] = None):
         """Initialize Gemini client"""
-        self.api_key = api_key or os.getenv('GEMINI_API_KEY')
+        #self.api_key = api_key or os.getenv('GEMINI_API_KEY')
+        api_key= 'AIzaSyDeZ_TkzKTqNvCEWWyI9hjktnFguNuauco'
         if not self.api_key:
             raise ValueError("GEMINI_API_KEY not found in environment variables")
         
