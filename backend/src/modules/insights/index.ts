@@ -31,6 +31,9 @@ router.get(
       throw new AppError('Start date must be before end date', 400, 'INVALID_DATE_RANGE');
     }
 
+    // Adjust end date to include the full day
+    end.setUTCHours(23, 59, 59, 999);
+
     // Calculate income (IN transactions)
     const incomeResult = await prisma.transaction.aggregate({
       where: {
@@ -83,7 +86,7 @@ router.get(
 /**
  * E3-S3: GET /api/insights/spending-by-category - Get spending grouped by category
  * Query params: start (ISO date), end (ISO date)
- * Returns: [{ categoryId, categoryName, total, transactionCount }]
+ * Returns: [{ categoryId, categoryName, totalAmount, transactionCount, categoryColor }]
  */
 router.get(
   '/spending-by-category',
@@ -103,6 +106,9 @@ router.get(
     if (start > end) {
       throw new AppError('Start date must be before end date', 400, 'INVALID_DATE_RANGE');
     }
+
+    // Adjust end date to include the full day
+    end.setUTCHours(23, 59, 59, 999);
 
     // Group by category
     const grouped = await prisma.transaction.groupBy({
@@ -139,6 +145,7 @@ router.get(
         id: true,
         name: true,
         type: true,
+        color: true,
       },
     });
 
@@ -152,13 +159,14 @@ router.get(
         categoryId: g.categoryId!,
         categoryName: category?.name || 'Unknown',
         categoryType: category?.type || 'EXPENSE',
-        total: Number(g._sum.amount || 0),
+        categoryColor: category?.color,
+        totalAmount: Number(g._sum.amount || 0),
         transactionCount: g._count.id,
       };
     });
 
     // Sort by total descending
-    spending.sort((a, b) => b.total - a.total);
+    spending.sort((a, b) => b.totalAmount - a.totalAmount);
 
     res.json({
       success: true,
@@ -176,7 +184,7 @@ router.get(
 /**
  * GET /api/insights/income-by-category - Get income grouped by category
  * Query params: start (ISO date), end (ISO date)
- * Returns: [{ categoryId, categoryName, total, transactionCount }]
+ * Returns: [{ categoryId, categoryName, totalAmount, transactionCount, categoryColor }]
  */
 router.get(
   '/income-by-category',
@@ -196,6 +204,9 @@ router.get(
     if (start > end) {
       throw new AppError('Start date must be before end date', 400, 'INVALID_DATE_RANGE');
     }
+
+    // Adjust end date to include the full day
+    end.setUTCHours(23, 59, 59, 999);
 
     // Group by category
     const grouped = await prisma.transaction.groupBy({
@@ -232,6 +243,7 @@ router.get(
         id: true,
         name: true,
         type: true,
+        color: true,
       },
     });
 
@@ -245,13 +257,14 @@ router.get(
         categoryId: g.categoryId!,
         categoryName: category?.name || 'Unknown',
         categoryType: category?.type || 'INCOME',
-        total: Number(g._sum.amount || 0),
+        categoryColor: category?.color,
+        totalAmount: Number(g._sum.amount || 0),
         transactionCount: g._count.id,
       };
     });
 
     // Sort by total descending
-    income.sort((a, b) => b.total - a.total);
+    income.sort((a, b) => b.totalAmount - a.totalAmount);
 
     res.json({
       success: true,
@@ -287,6 +300,9 @@ router.get(
     if (start > end) {
       throw new AppError('Start date must be before end date', 400, 'INVALID_DATE_RANGE');
     }
+
+    // Adjust end date to include the full day
+    end.setUTCHours(23, 59, 59, 999);
 
     // Fetch all transactions in range
     const transactions = await prisma.transaction.findMany({

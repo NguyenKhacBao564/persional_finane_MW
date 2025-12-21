@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { format, parseISO, isValid } from 'date-fns';
 import { updateTransaction } from '@/api/transactions';
 import type { Transaction } from '@/types/transactions';
 import type { TransactionCreateInput } from '@/schemas/transaction';
@@ -102,15 +103,30 @@ export function EditTransactionDialog({
 
   // Convert transaction type to form type (IN/OUT)
   const getFormType = (txType: string): 'IN' | 'OUT' => {
-    if (txType === 'INCOME') return 'IN';
-    if (txType === 'EXPENSE') return 'OUT';
+    if (!txType) return 'OUT';
+    const normalized = txType.toUpperCase();
+    if (normalized === 'IN' || normalized === 'INCOME') return 'IN';
     return 'OUT'; // Default
   };
 
+  // Safe date formatting
+  const formatDateForForm = (dateString?: string): string => {
+    if (!dateString) return new Date().toISOString().split('T')[0];
+    try {
+      const date = parseISO(dateString);
+      if (isValid(date)) {
+        return format(date, 'yyyy-MM-dd');
+      }
+      return new Date().toISOString().split('T')[0];
+    } catch (e) {
+      return new Date().toISOString().split('T')[0];
+    }
+  };
+
   const defaultValues = {
-    txDate: transaction.txDate,
+    txDate: formatDateForForm(transaction.txDate),
     type: getFormType(transaction.type),
-    amount: Math.abs(transaction.amount),
+    amount: transaction.amount ? Math.abs(transaction.amount) : 0,
     categoryId: transaction.category?.id || '',
     accountId: transaction.account?.id || '',
     note: transaction.note || '',

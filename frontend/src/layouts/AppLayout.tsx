@@ -4,7 +4,7 @@ import {
   LayoutDashboard,
   Receipt,
   Target,
-  Upload,
+  //Upload,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -23,7 +23,7 @@ const navItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/transactions', icon: Receipt, label: 'Transactions' },
   { to: '/budgets', icon: Target, label: 'Budgets' },
-  { to: '/transactions/import', icon: Upload, label: 'Import' },
+  //{ to: '/transactions/import', icon: Upload, label: 'Import' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 

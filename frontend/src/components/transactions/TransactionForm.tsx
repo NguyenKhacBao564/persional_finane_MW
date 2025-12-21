@@ -1,10 +1,12 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { format, parse } from 'date-fns';
+import { format, parse, isValid } from 'date-fns';
 import { CalendarIcon, Loader2 } from 'lucide-react';
 import {
   transactionCreateSchema,
+  transactionEditFormSchema,
   type TransactionCreateInput,
+  type TransactionEditFormInput,
   type TransactionUpdateInput,
 } from '@/schemas/transaction';
 import { cn } from '@/lib/utils';
@@ -38,7 +40,7 @@ import { AmountInput } from './AmountInput';
 interface TransactionFormProps {
   mode: 'create' | 'edit';
   defaultValues?: Partial<TransactionCreateInput & { id?: string }>;
-  onSubmit: (values: TransactionCreateInput) => Promise<void> | void;
+  onSubmit: (values: TransactionCreateInput | TransactionEditFormInput) => Promise<void> | void;
   onCancel?: () => void;
   isSubmitting?: boolean;
   categories?: Array<{ id: string; name: string; color?: string }>;
@@ -66,8 +68,10 @@ export function TransactionForm({
   categories = [],
   accounts = [],
 }: TransactionFormProps) {
+  const schema = mode === 'create' ? transactionCreateSchema : transactionEditFormSchema;
+  
   const form = useForm<TransactionCreateInput>({
-    resolver: zodResolver(transactionCreateSchema),
+    resolver: zodResolver(schema),
     defaultValues: {
       txDate: defaultValues?.txDate || new Date().toISOString().split('T')[0],
       type: defaultValues?.type || 'OUT',
@@ -78,11 +82,26 @@ export function TransactionForm({
     },
   });
 
-  const handleSubmit = async (values: TransactionCreateInput) => {
+  const handleSubmit = async (values: TransactionCreateInput | TransactionEditFormInput) => {
     await onSubmit(values);
   };
 
   const noteLength = form.watch('note')?.length || 0;
+
+  // Helper to safely parse date for display/calendar
+  const safeParseDate = (dateString: string | undefined): Date | undefined => {
+    if (!dateString) return undefined;
+    
+    // Try parsing as yyyy-MM-dd first
+    let date = parse(dateString, 'yyyy-MM-dd', new Date());
+    if (isValid(date)) return date;
+
+    // Try parsing as standard Date (e.g. ISO string)
+    date = new Date(dateString);
+    if (isValid(date)) return date;
+
+    return undefined;
+  };
 
   return (
     <Form {...form}>
@@ -93,54 +112,50 @@ export function TransactionForm({
           <FormField
             control={form.control}
             name="txDate"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Date</FormLabel>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          'w-full pl-3 text-left font-normal',
-                          !field.value && 'text-muted-foreground'
-                        )}
-                      >
-                        {field.value ? (
-                          format(
-                            parse(field.value, 'yyyy-MM-dd', new Date()),
-                            'dd/MM/yyyy'
-                          )
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={
-                        field.value
-                          ? parse(field.value, 'yyyy-MM-dd', new Date())
-                          : undefined
-                      }
-                      onSelect={(date) => {
-                        if (date) {
-                          field.onChange(format(date, 'yyyy-MM-dd'));
+            render={({ field }) => {
+              const dateValue = safeParseDate(field.value);
+              return (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'w-full pl-3 text-left font-normal',
+                            !field.value && 'text-muted-foreground'
+                          )}
+                        >
+                          {dateValue ? (
+                            format(dateValue, 'dd/MM/yyyy')
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={dateValue}
+                        onSelect={(date) => {
+                          if (date) {
+                            field.onChange(format(date, 'yyyy-MM-dd'));
+                          }
+                        }}
+                        disabled={(date) =>
+                          date > new Date() || date < new Date('1900-01-01')
                         }
-                      }}
-                      disabled={(date) =>
-                        date > new Date() || date < new Date('1900-01-01')
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-              </FormItem>
-            )}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              );
+            }}
           />
 
           {/* Type Select */}

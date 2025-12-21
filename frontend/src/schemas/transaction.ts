@@ -49,6 +49,24 @@ export const transactionCreateSchema = z.object({
 });
 
 /**
+ * Zod schema for transaction editing form.
+ * Same as create but keeps txDate as YYYY-MM-DD string for backend compatibility.
+ */
+export const transactionEditFormSchema = transactionCreateSchema.extend({
+  txDate: z
+    .string()
+    .min(1, 'Date is required')
+    .refine(
+      (val) => {
+        const date = new Date(val);
+        return !isNaN(date.getTime());
+      },
+      { message: 'Invalid date format' }
+    )
+    // No transformation to ISO string needed for update endpoint
+});
+
+/**
  * Zod schema for transaction updates.
  * Similar to create schema but with optional fields except ID.
  */
@@ -95,6 +113,11 @@ export const transactionUpdateSchema = z.object({
  * TypeScript type for transaction creation input.
  */
 export type TransactionCreateInput = z.infer<typeof transactionCreateSchema>;
+
+/**
+ * TypeScript type for transaction edit form input.
+ */
+export type TransactionEditFormInput = z.infer<typeof transactionEditFormSchema>;
 
 /**
  * TypeScript type for transaction update input.
